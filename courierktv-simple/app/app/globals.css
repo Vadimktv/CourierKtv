@@ -1,0 +1,111 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 18 18 18;
+  --foreground: 224 224 224;
+  --card: 30 30 30;
+  --card-foreground: 224 224 224;
+  --primary: 0 184 148;
+  --primary-foreground: 255 255 255;
+  --secondary: 136 136 136;
+  --secondary-foreground: 255 255 255;
+  --muted: 39 39 42;
+  --muted-foreground: 161 161 170;
+  --accent: 39 39 42;
+  --accent-foreground: 250 250 250;
+  --destructive: 239 68 68;
+  --destructive-foreground: 250 250 250;
+  --border: 39 39 42;
+  --input: 39 39 42;
+  --ring: 0 184 148;
+  --radius: 0.5rem;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--secondary));
+}
+
+/* Button styles */
+.btn-primary {
+  @apply bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors;
+}
+
+.btn-secondary {
+  @apply bg-zinc-700 hover:bg-zinc-600 text-white px-4 py-2 rounded-lg font-medium transition-colors;
+}
+
+.btn-outline {
+  @apply border border-zinc-600 hover:bg-zinc-800 text-zinc-300 px-4 py-2 rounded-lg font-medium transition-colors;
+}
+
+/* Card styles */
+.card {
+  @apply bg-zinc-900 border border-zinc-800 rounded-lg p-4 shadow-sm;
+}
+
+/* Input styles */
+.input {
+  @apply bg-zinc-800 border border-zinc-700 text-white px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent;
+}
+
+.select {
+  @apply bg-zinc-800 border border-zinc-700 text-white px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent;
+}
+
+/* Status indicators */
+.status-active {
+  @apply bg-green-600 text-white px-2 py-1 rounded-full text-xs font-medium;
+}
+
+.status-inactive {
+  @apply bg-zinc-600 text-white px-2 py-1 rounded-full text-xs font-medium;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  body {
+    font-size: 16px;
+  }
+  
+  .btn-primary,
+  .btn-secondary,
+  .btn-outline {
+    @apply min-h-[48px] text-base;
+  }
+  
+  .input,
+  .select {
+    @apply min-h-[48px] text-base;
+  }
+}

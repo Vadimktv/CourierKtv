@@ -1,0 +1,133 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 45 93% 47%;
+    --primary-foreground: 222.2 84% 4.9%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 45 93% 47%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom styles for dark theme */
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+}
+
+/* Upload zone styles */
+.upload-zone {
+  @apply border-2 border-dashed border-muted-foreground/50 rounded-lg p-8 text-center transition-colors;
+}
+
+.upload-zone:hover {
+  @apply border-primary/50 bg-primary/5;
+}
+
+.upload-zone.dragover {
+  @apply border-primary bg-primary/10;
+}
+
+/* Receipt card styles */
+.receipt-card {
+  @apply bg-card border border-border rounded-lg p-4 shadow-sm transition-all duration-200;
+}
+
+.receipt-card:hover {
+  @apply shadow-md border-primary/50;
+}
+
+/* Order card styles */
+.order-card {
+  @apply bg-secondary/50 border border-border rounded-lg p-4 space-y-3 transition-all duration-200;
+}
+
+.order-card:hover {
+  @apply shadow-md border-primary/30;
+}
+
+/* Sticky footer */
+.sticky-footer {
+  @apply fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-4 z-50;
+}
+
+/* Phone number link */
+.phone-link {
+  @apply text-primary hover:text-primary/80 transition-colors underline;
+}
+
+/* Route button */
+.route-button {
+  @apply bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-md px-4 py-2 text-sm font-medium;
+}
+
+/* Edit mode styles */
+.edit-mode {
+  @apply bg-primary/10 border-primary/50;
+}
+
+/* Loading animation */
+.loading-spinner {
+  @apply animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full;
+}
+
+/* Progress bar */
+.progress-bar {
+  @apply bg-muted rounded-full h-2 overflow-hidden;
+}
+
+.progress-fill {
+  @apply bg-primary h-full transition-all duration-300 ease-out;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .mobile-padding {
+    @apply px-4 py-2;
+  }
+  
+  .mobile-text {
+    @apply text-sm;
+  }
+  
+  .mobile-button {
+    @apply min-h-[44px] min-w-[44px];
+  }
+}

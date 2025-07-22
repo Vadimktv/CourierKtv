@@ -1,0 +1,64 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/courier_receipt_tool/app/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Order {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Receipt image info
+  receiptImageUrl String?
+  originalFileName String?
+  
+  // Extracted data
+  restaurant    String
+  orderDate     DateTime?
+  orderTime     String?
+  
+  // Delivery address
+  fullAddress   String
+  street        String?
+  houseNumber   String?
+  building      String?
+  entrance      String?
+  floor         String?
+  apartment     String?
+  
+  // Contact info
+  phoneNumber   String
+  
+  // Payment info
+  totalAmount   Float
+  paymentMethod String // "cash" or "card"
+  
+  // Processing status
+  status        String @default("processed") // "processing", "processed", "error"
+  extractedData Json?  // Raw extracted data for debugging
+  
+  processingHistory ProcessingHistory[]
+  
+  @@map("orders")
+}
+
+model ProcessingHistory {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  
+  fileName    String
+  status      String   // "success", "error"
+  errorMessage String?
+  processingTimeMs Int?
+  
+  orderId     String?
+  order       Order?   @relation(fields: [orderId], references: [id])
+  
+  @@map("processing_history")
+}

@@ -1,0 +1,46 @@
+
+// This is your Prisma schema file
+
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/premium-receipt-analyzer/app/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Receipt {
+  id            String   @id @default(cuid())
+  filename      String
+  originalUrl   String
+  processedData Json?
+  status        String   @default("processing") // processing, completed, error
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  orders        Order[]
+
+  @@map("receipts")
+}
+
+model Order {
+  id             String   @id @default(cuid())
+  receiptId      String
+  restaurantName String?
+  address        String?
+  entrance       String?
+  floor          String?
+  apartment      String?
+  phoneNumber    String?
+  totalAmount    String?
+  paymentMethod  String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  receipt Receipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+
+  @@map("orders")
+}

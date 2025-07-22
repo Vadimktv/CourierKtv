@@ -1,0 +1,87 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 8%;
+    --foreground: 210 40% 98%;
+    --card: 210 40% 12%;
+    --card-foreground: 210 40% 98%;
+    --popover: 210 40% 12%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 200 98% 39%;
+    --primary-foreground: 200 98% 1%;
+    --secondary: 210 40% 15%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 210 40% 15%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 210 40% 18%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 210 40% 18%;
+    --input: 210 40% 18%;
+    --ring: 200 98% 39%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .animate-count-up {
+    @apply transition-all duration-1000 ease-out;
+  }
+  
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 font-medium py-3 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl;
+  }
+  
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 font-medium py-3 px-6 rounded-lg transition-all duration-200;
+  }
+  
+  .card {
+    @apply bg-card text-card-foreground rounded-lg shadow-lg border border-border/50 p-6;
+  }
+  
+  .card-hover {
+    @apply hover:shadow-xl hover:bg-card/80 transition-all duration-200 cursor-pointer;
+  }
+  
+  .zone-violet {
+    @apply bg-violet-500/20 text-violet-300 border-violet-500/30;
+  }
+  
+  .zone-green {
+    @apply bg-green-500/20 text-green-300 border-green-500/30;
+  }
+  
+  .zone-red {
+    @apply bg-red-500/20 text-red-300 border-red-500/30;
+  }
+  
+  .zone-blue {
+    @apply bg-blue-500/20 text-blue-300 border-blue-500/30;
+  }
+}
+
+/* Подавляем гидрационные ошибки */
+.hydration-error {
+  display: none !important;
+}
+
+/* Скрываем ошибки консоли в UI */
+.__next_error_overlay__ {
+  display: none !important;
+}
