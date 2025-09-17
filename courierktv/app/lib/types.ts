@@ -142,3 +142,30 @@ export interface ZoneSearchResult {
   zone: Zone | null;
   city: City | null;
 }
+
+export type ReceiptAnalysisSource = 'file' | 'text';
+
+export interface ReceiptDetectedFields {
+  restaurant: boolean;
+  fullAddress: boolean;
+  phoneNumber: boolean;
+  totalAmount: boolean;
+  paymentMethod: boolean;
+}
+
+export interface ReceiptAnalysisResult {
+  restaurant: string;
+  fullAddress: string;
+  phoneNumber: string;
+  additionalNumber?: string;
+  totalAmount: number | null;
+  paymentMethod: string;
+  hasHandwrittenSum: boolean;
+  orderDate?: string;
+  orderTime?: string;
+  rawText: string;
+  warnings: string[];
+  suggestions: string[];
+  confidence: number;
+  detectedFields: ReceiptDetectedFields;
+}
