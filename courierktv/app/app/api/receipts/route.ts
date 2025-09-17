@@ -1,9 +1,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
+import { promises as fs } from 'fs';
+import path from 'path';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { parsePhoneNumber, getZoneByAddress, extractAddressComponents, detectHandwrittenSum } from '@/lib/utils';
+import { parsePhoneNumber, getZoneByAddress, extractAddressComponents } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +48,16 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
-    const dataString = formData.get('data') as string;
+    const dataString = formData.get('data') as string | null;
+    const imageFile = formData.get('image') as File | null;
+
+    if (!dataString) {
+      return NextResponse.json(
+        { message: 'Не переданы данные чека' },
+        { status: 400 }
+      );
+    }
+
     const data = JSON.parse(dataString);
 
     const {
@@ -58,11 +69,33 @@ export async function POST(request: NextRequest) {
       hasHandwrittenSum,
     } = data;
 
-    if (!fullAddress || !totalAmount || !paymentMethod) {
+    const numericAmount = typeof totalAmount === 'string' ? parseFloat(totalAmount) : totalAmount;
+
+    if (!fullAddress || numericAmount === null || Number.isNaN(numericAmount) || !paymentMethod) {
       return NextResponse.json(
         { message: 'Заполните все обязательные поля' },
         { status: 400 }
       );
+    }
+
+    let imageUrl: string | null = null;
+    let originalFileName: string | null = null;
+
+    if (imageFile && imageFile.size > 0) {
+      const arrayBuffer = await imageFile.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'receipts');
+      await fs.mkdir(uploadDir, { recursive: true });
+
+      const sanitizedName = imageFile.name
+        .replace(/[^A-Za-z0-9._-]/g, '_')
+        .slice(-80);
+      const fileName = `${Date.now()}-${sanitizedName || 'receipt'}`;
+      const filePath = path.join(uploadDir, fileName);
+      await fs.writeFile(filePath, buffer);
+
+      imageUrl = `/uploads/receipts/${fileName}`;
+      originalFileName = imageFile.name;
     }
 
     // Parse phone number
@@ -106,12 +139,14 @@ export async function POST(request: NextRequest) {
         apartment: addressComponents.apartment,
         phoneNumber: phoneData.main,
         additionalNumber: phoneData.additional,
-        totalAmount,
+        totalAmount: numericAmount,
         paymentMethod,
         hasHandwrittenSum: hasHandwrittenSum || false,
         zoneRate,
         earnings,
         status: 'processed',
+        imageUrl,
+        originalFileName,
       },
       include: {
         zone: true,
