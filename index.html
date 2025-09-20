@@ -4,75 +4,783 @@
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>courierktv.ru — сайт в разработке</title>
+  <title>CourierKTV — голосовой помощник курьера</title>
+  <meta
+    name="description"
+    content="Голосовой помощник курьера: продиктуйте адрес, сумму и контакты, чтобы быстро построить маршрут и связаться с клиентом."
+  />
   <style>
     :root {
       color-scheme: light dark;
-      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --bg-gradient: radial-gradient(circle at top left, #eef2ff, #e0f2fe);
+      --panel-bg: rgba(255, 255, 255, 0.9);
+      --text-color: #0f172a;
+      --accent: #2563eb;
+      --accent-strong: #1d4ed8;
+      --muted: #64748b;
+      --border: rgba(148, 163, 184, 0.35);
+      --shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+      --radius-lg: 20px;
+      --radius-sm: 12px;
     }
 
     body {
       margin: 0;
       min-height: 100vh;
-      display: grid;
-      place-items: center;
-      background: radial-gradient(circle at top left, #f0f4ff, #d9e4ff);
-      color: #111827;
-      text-align: center;
-      padding: 2rem;
+      display: flex;
+      justify-content: center;
+      background: var(--bg-gradient);
+      color: var(--text-color);
+      padding: clamp(1.5rem, 2vw + 1rem, 3rem);
     }
 
-    .card {
-      background: rgba(255, 255, 255, 0.85);
-      backdrop-filter: blur(8px);
-      border-radius: 18px;
-      padding: 3rem 2.5rem;
-      max-width: 480px;
-      box-shadow: 0 20px 60px rgba(15, 23, 42, 0.15);
+    .app {
+      width: min(1100px, 100%);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(1.5rem, 2vw, 2.25rem);
     }
 
-    h1 {
-      margin: 0 0 1rem;
-      font-size: clamp(2rem, 5vw, 2.8rem);
-      color: #1d4ed8;
+    .header {
+      background: var(--panel-bg);
+      border-radius: var(--radius-lg);
+      padding: clamp(1.75rem, 2vw + 1rem, 2.5rem);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
     }
 
-    p {
-      margin: 0 0 1.5rem;
+    .header h1 {
+      margin: 0 0 0.75rem;
+      font-size: clamp(1.8rem, 2.8vw, 2.4rem);
+      color: var(--accent-strong);
+    }
+
+    .header p {
+      margin: 0;
+      max-width: 620px;
       line-height: 1.6;
+      color: var(--muted);
+    }
+
+    .layout {
+      display: grid;
+      gap: clamp(1.25rem, 2vw, 2rem);
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border-radius: var(--radius-lg);
+      padding: clamp(1.5rem, 2vw + 1rem, 2.3rem);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(1rem, 1.5vw, 1.5rem);
+    }
+
+    .voice-panel h2,
+    .data-panel h2,
+    .summary h3 {
+      margin: 0 0 0.75rem;
+      font-size: clamp(1.25rem, 2vw, 1.5rem);
+    }
+
+    .mic-box {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .mic-button {
+      align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.85rem 1.7rem;
+      border-radius: 999px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      box-shadow: 0 16px 35px rgba(37, 99, 235, 0.35);
+    }
+
+    .mic-button .mic-icon {
+      font-size: 1.4rem;
+    }
+
+    .mic-button:hover {
+      transform: translateY(-1px);
+      background: var(--accent-strong);
+      box-shadow: 0 20px 40px rgba(29, 78, 216, 0.38);
+    }
+
+    .mic-button.listening {
+      background: #ef4444;
+      box-shadow: 0 20px 45px rgba(239, 68, 68, 0.4);
+    }
+
+    .mic-button.listening:hover {
+      background: #dc2626;
+    }
+
+    .status {
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .transcript {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .transcript-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .ghost-button {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.4rem 0.9rem;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 0.9rem;
+      transition: border 0.2s ease, color 0.2s ease;
+    }
+
+    .ghost-button:hover {
+      color: var(--accent-strong);
+      border-color: rgba(37, 99, 235, 0.35);
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+      padding: 0.9rem 1rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      font: inherit;
+      line-height: 1.5;
+      background: rgba(255, 255, 255, 0.85);
+      color: inherit;
+    }
+
+    textarea:focus,
+    input:focus {
+      outline: 3px solid rgba(37, 99, 235, 0.15);
+      border-color: rgba(37, 99, 235, 0.45);
+    }
+
+    .data-form {
+      display: grid;
+      gap: 1rem;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      font-weight: 600;
+    }
+
+    input {
+      padding: 0.75rem 0.9rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      font: inherit;
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .actions button,
+    .actions a {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1.3rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      text-decoration: none;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      box-shadow: 0 14px 35px rgba(37, 99, 235, 0.3);
+    }
+
+    .actions button.secondary,
+    .actions a.secondary {
+      background: #0f172a;
+      box-shadow: 0 14px 32px rgba(15, 23, 42, 0.35);
+    }
+
+    .actions button:hover:not(:disabled),
+    .actions a:hover:not(.disabled) {
+      transform: translateY(-1px);
+      background: var(--accent-strong);
+      box-shadow: 0 18px 38px rgba(29, 78, 216, 0.35);
+    }
+
+    .actions button.secondary:hover:not(:disabled),
+    .actions a.secondary:hover:not(.disabled) {
+      background: #1f2937;
+    }
+
+    .actions button:disabled,
+    .actions a.disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .actions a.disabled {
+      background: #94a3b8;
+      color: #f1f5f9;
+    }
+
+    .summary {
+      background: rgba(148, 163, 184, 0.08);
+      border-radius: var(--radius-sm);
+      padding: 1rem 1.2rem;
+    }
+
+    .summary ul {
+      margin: 0;
+      padding-left: 1.1rem;
+      display: grid;
+      gap: 0.4rem;
     }
 
     .muted {
-      color: #6b7280;
-      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    @media (min-width: 960px) {
+      .layout {
+        grid-template-columns: 1.1fr 0.9fr;
+      }
+    }
+
+    .mic-button:disabled,
+    .mic-button.disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+      box-shadow: none;
+      transform: none;
     }
 
     @media (prefers-color-scheme: dark) {
-      body {
-        background: radial-gradient(circle at top left, #0f172a, #1e293b);
-        color: #f8fafc;
+      :root {
+        --bg-gradient: radial-gradient(circle at top left, #0f172a, #1e293b);
+        --panel-bg: rgba(15, 23, 42, 0.92);
+        --text-color: #f8fafc;
+        --muted: #cbd5f5;
+        --border: rgba(148, 163, 184, 0.3);
+        --shadow: 0 20px 50px rgba(2, 6, 23, 0.65);
       }
 
-      .card {
-        background: rgba(30, 41, 59, 0.75);
-        box-shadow: 0 20px 60px rgba(2, 6, 23, 0.6);
+      textarea,
+      input {
+        background: rgba(15, 23, 42, 0.75);
       }
 
-      h1 {
-        color: #60a5fa;
+      .summary {
+        background: rgba(148, 163, 184, 0.12);
       }
 
-      .muted {
-        color: #94a3b8;
+      .actions button.secondary,
+      .actions a.secondary {
+        background: #1f2937;
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.6);
       }
     }
   </style>
 </head>
 <body>
-  <main class="card">
-    <h1>Сайт работает! 🎉</h1>
-    <p>Это временная главная страница <strong>courierktv.ru</strong>.</p>
-    <p class="muted">Содержимое проекта пока в разработке. Обновите страницу позже — мы обязательно подготовим полноценный сайт.</p>
-  </main>
+  <div class="app">
+    <header class="header">
+      <h1>Голосовой помощник курьера</h1>
+      <p>
+        Нажмите на микрофон, продиктуйте адрес, сумму и контакт клиента. Система распознает важные данные, сохранит их и
+        подготовит быстрые кнопки для звонка и построения маршрута.
+      </p>
+    </header>
+    <main class="layout">
+      <section class="panel voice-panel">
+        <div class="mic-box">
+          <button id="micButton" type="button" class="mic-button">
+            <span class="mic-icon">🎙</span>
+            <span class="mic-label">Начать диктовку</span>
+          </button>
+          <p id="micStatus" class="status">
+            Говорите свободно: «Адрес улица Ленина 10, сумма 1500 рублей, телефон восемь девятьсот…» — поля заполнятся
+            автоматически.
+          </p>
+        </div>
+        <div class="transcript">
+          <div class="transcript-header">
+            <h2>Распознанный текст</h2>
+            <button id="clearNotes" type="button" class="ghost-button">Очистить</button>
+          </div>
+          <textarea id="notesField" placeholder="История диктовки появится здесь…" spellcheck="false"></textarea>
+        </div>
+      </section>
+      <section class="panel data-panel">
+        <h2>Данные заказа</h2>
+        <form class="data-form" autocomplete="off">
+          <label>
+            Адрес доставки
+            <input id="addressInput" name="address" type="text" inputmode="text" placeholder="Например, ул. Ленина, 10" />
+          </label>
+          <label>
+            Контактный телефон
+            <input id="phoneInput" name="phone" type="tel" inputmode="tel" placeholder="Например, +7 999 123-45-67" />
+          </label>
+          <label>
+            Сумма к оплате
+            <input id="amountInput" name="amount" type="text" inputmode="decimal" placeholder="Например, 1500 ₽" />
+          </label>
+        </form>
+        <div class="actions">
+          <button id="routeButton" type="button" disabled>Построить маршрут</button>
+          <button id="callButton" type="button" disabled>Позвонить клиенту</button>
+          <a id="navigatorButton" class="secondary disabled" role="button" aria-disabled="true" tabindex="-1">Открыть в Яндекс.Навигаторе</a>
+        </div>
+        <div class="summary">
+          <h3>Итог</h3>
+          <ul id="summaryList">
+            <li>Адрес: <span class="muted">не указан</span></li>
+            <li>Телефон: <span class="muted">не указан</span></li>
+            <li>Сумма: <span class="muted">не указана</span></li>
+          </ul>
+          <p id="geocodeStatus" class="status"></p>
+        </div>
+      </section>
+    </main>
+    <footer class="footer">Данные сохраняются только на этом устройстве.</footer>
+  </div>
+  <script>
+    (function () {
+      const micButton = document.getElementById("micButton");
+      const micStatus = document.getElementById("micStatus");
+      const notesField = document.getElementById("notesField");
+      const clearNotesButton = document.getElementById("clearNotes");
+      const addressInput = document.getElementById("addressInput");
+      const amountInput = document.getElementById("amountInput");
+      const phoneInput = document.getElementById("phoneInput");
+      const routeButton = document.getElementById("routeButton");
+      const callButton = document.getElementById("callButton");
+      const navigatorButton = document.getElementById("navigatorButton");
+      const summaryList = document.getElementById("summaryList");
+      const geocodeStatus = document.getElementById("geocodeStatus");
+
+      const STORAGE_KEY = "courier-assistant-state-v1";
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      let recognition;
+      let isListening = false;
+      let geocodeTimer;
+      let currentGeocode;
+      let abortController;
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return;
+          const state = JSON.parse(raw);
+          if (state.address) addressInput.value = state.address;
+          if (state.amount) amountInput.value = state.amount;
+          if (state.phone) phoneInput.value = state.phone;
+          if (state.notes) notesField.value = state.notes;
+        } catch (error) {
+          console.warn("Не удалось загрузить сохранённые данные", error);
+        }
+      }
+
+      function persistState() {
+        const state = {
+          address: addressInput.value.trim(),
+          amount: amountInput.value.trim(),
+          phone: phoneInput.value.trim(),
+          notes: notesField.value.trim(),
+        };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (error) {
+          console.warn("Не удалось сохранить состояние", error);
+        }
+      }
+
+      function updateSummary() {
+        const address = addressInput.value.trim();
+        const phone = phoneInput.value.trim();
+        const amount = amountInput.value.trim();
+
+        summaryList.innerHTML = `
+          <li>Адрес: ${address ? `<strong>${address}</strong>` : '<span class="muted">не указан</span>'}</li>
+          <li>Телефон: ${phone ? `<strong>${phone}</strong>` : '<span class="muted">не указан</span>'}</li>
+          <li>Сумма: ${amount ? `<strong>${amount}</strong>` : '<span class="muted">не указана</span>'}</li>
+        `;
+
+        callButton.disabled = !normalizePhone(phone);
+        if (!address) {
+          routeButton.disabled = true;
+          navigatorButton.classList.add("disabled");
+          navigatorButton.setAttribute("aria-disabled", "true");
+          navigatorButton.setAttribute("tabindex", "-1");
+        } else {
+          navigatorButton.classList.remove("disabled");
+          navigatorButton.setAttribute("aria-disabled", "false");
+          navigatorButton.removeAttribute("tabindex");
+        }
+
+        if (!address) {
+          geocodeStatus.textContent = "";
+          currentGeocode = null;
+          routeButton.disabled = true;
+          navigatorButton.dataset.coords = "";
+        }
+      }
+
+      function formatAmount(value) {
+        const cleaned = value.replace(/[^\d,\.]/g, "").replace(/,/g, ".");
+        const number = parseFloat(cleaned);
+        if (Number.isFinite(number)) {
+          const hasDecimals = Math.abs(number % 1) > 0;
+          return new Intl.NumberFormat("ru-RU", {
+            style: "currency",
+            currency: "RUB",
+            minimumFractionDigits: hasDecimals ? 2 : 0,
+            maximumFractionDigits: hasDecimals ? 2 : 0,
+          }).format(number);
+        }
+        return value;
+      }
+
+      function normalizePhone(input) {
+        if (!input) return "";
+        const digits = input.replace(/\D/g, "");
+        if (digits.length < 10) return "";
+        let normalized = digits;
+        if (digits.length === 11 && digits.startsWith("8")) {
+          normalized = "7" + digits.slice(1);
+        }
+        if (normalized.length === 10) {
+          normalized = "7" + normalized;
+        }
+        if (normalized.length < 11) return "";
+        return `+${normalized}`;
+      }
+
+      function prettyPhone(phone) {
+        const normalized = normalizePhone(phone);
+        if (!normalized) return phone;
+        const digits = normalized.replace(/[^\d]/g, "");
+        const country = normalized.slice(0, 2);
+        const main = digits.slice(1);
+        if (main.length === 10) {
+          return `${country} ${main.slice(0, 3)} ${main.slice(3, 6)}-${main.slice(6, 8)}-${main.slice(8)}`;
+        }
+        return normalized;
+      }
+
+      function appendNote(text) {
+        const current = notesField.value.trim();
+        notesField.value = current ? `${current}\n${text}` : text;
+      }
+
+      function parseSpeech(transcript) {
+        const normalized = transcript.toLowerCase();
+        const amountMatch = normalized.match(/(?:сумма|оплата|стоимость|к оплате|получить|итог)\s*(?:составляет|будет|)\s*([\d\s]+(?:[\.,]\d+)?)/);
+        if (amountMatch) {
+          amountInput.value = formatAmount(amountMatch[1]);
+        } else {
+          const numberCandidates = [...transcript.matchAll(/\b\d{2,6}\b/g)].map((match) => match[0]);
+          const amountCandidate = numberCandidates.find((value) => value.length <= 6);
+          if (amountCandidate && !normalized.includes(amountCandidate.repeat(2))) {
+            amountInput.value = formatAmount(amountCandidate);
+          }
+        }
+
+        const phoneMatch = transcript.match(/(?:телефон|номер|контакт)\s*(?:клиента|получателя|)\s*(?:номер|)\s*([\+\d\s\-()]{7,})/i);
+        let phone = "";
+        if (phoneMatch) {
+          phone = phoneMatch[1];
+        } else {
+          const rawDigits = transcript.match(/\+?\d[\d\s\-()]{9,}/);
+          if (rawDigits) {
+            phone = rawDigits[0];
+          }
+        }
+        if (phone) {
+          const formatted = prettyPhone(phone);
+          if (normalizePhone(formatted)) {
+            phoneInput.value = formatted;
+          }
+        }
+
+        const addressMatch = transcript.match(/(?:адрес(?: доставки)?|ехать(?: к| в)?|везти(?: в)?|доставка(?: в)?|куда ехать)\s*(?:[:\-]?\s*)([^\.]+?)(?:\s*(?:сумма|оплата|телефон|номер|контакт|руб|р\b|$))/i);
+        if (addressMatch) {
+          const address = tidyAddress(addressMatch[1]);
+          if (address) {
+            addressInput.value = address;
+          }
+        } else if (!addressInput.value.trim()) {
+          const streetMatch = transcript.match(/(?:ул\.?|улица|проспект|площадь|шоссе|пер\.?|дом|д\.?)\s*[^,.]+/i);
+          if (streetMatch) {
+            addressInput.value = tidyAddress(streetMatch[0]);
+          }
+        }
+
+        persistState();
+        updateSummary();
+        scheduleGeocode();
+      }
+
+      function tidyAddress(raw) {
+        if (!raw) return "";
+        return raw
+          .replace(/^(по\s+адресу|в|к|на)\s+/i, "")
+          .replace(/[.,;]+$/, "")
+          .replace(/\s{2,}/g, " ")
+          .trim();
+      }
+
+      function scheduleGeocode() {
+        const address = addressInput.value.trim();
+        if (!address) {
+          geocodeStatus.textContent = "";
+          currentGeocode = null;
+          routeButton.disabled = true;
+          navigatorButton.dataset.coords = "";
+          return;
+        }
+        geocodeStatus.textContent = "Ищем координаты по адресу…";
+        routeButton.disabled = true;
+        navigatorButton.dataset.coords = "";
+        if (geocodeTimer) {
+          clearTimeout(geocodeTimer);
+        }
+        if (abortController) {
+          abortController.abort();
+        }
+        geocodeTimer = setTimeout(async () => {
+          abortController = new AbortController();
+          try {
+            const response = await fetch(
+              `https://geocode.maps.co/search?q=${encodeURIComponent(address)}&accept-language=ru`,
+              { signal: abortController.signal }
+            );
+            if (!response.ok) {
+              throw new Error(`Ошибка сервера: ${response.status}`);
+            }
+            const data = await response.json();
+            if (Array.isArray(data) && data.length > 0) {
+              const best = data[0];
+              currentGeocode = {
+                lat: parseFloat(best.lat),
+                lon: parseFloat(best.lon),
+                label: best.display_name || address,
+              };
+              geocodeStatus.textContent = `Координаты найдены: ${currentGeocode.label}`;
+              routeButton.disabled = false;
+              navigatorButton.dataset.coords = `${currentGeocode.lat},${currentGeocode.lon}`;
+            } else {
+              currentGeocode = null;
+              geocodeStatus.textContent = "Не удалось найти координаты, попробуйте уточнить адрес.";
+            }
+          } catch (error) {
+            if (error.name === "AbortError") return;
+            currentGeocode = null;
+            geocodeStatus.textContent = "Не удалось связаться с сервисом геокодирования.";
+            console.warn("Geocode error", error);
+          }
+        }, 600);
+      }
+
+      function toggleListening() {
+        if (!recognition) return;
+        if (isListening) {
+          recognition.stop();
+          return;
+        }
+        try {
+          recognition.start();
+        } catch (error) {
+          console.warn("Speech recognition start error", error);
+        }
+      }
+
+      function setupRecognition() {
+        if (!SpeechRecognition) {
+          micButton.disabled = true;
+          micButton.classList.add("disabled");
+          const label = micButton.querySelector(".mic-label");
+          if (label) {
+            label.textContent = "Распознавание недоступно";
+          }
+          micStatus.textContent =
+            "Распознавание речи недоступно в этом браузере. Воспользуйтесь последней версией Chrome или Edge.";
+          return;
+        }
+        recognition = new SpeechRecognition();
+        recognition.lang = "ru-RU";
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+
+        recognition.addEventListener("start", () => {
+          isListening = true;
+          micButton.classList.add("listening");
+          micButton.querySelector(".mic-label").textContent = "Слушаем… Нажмите, чтобы остановить";
+          micStatus.textContent = "Говорите. Чтобы закончить, снова нажмите на кнопку.";
+        });
+
+        recognition.addEventListener("end", () => {
+          isListening = false;
+          micButton.classList.remove("listening");
+          micButton.querySelector(".mic-label").textContent = "Начать диктовку";
+          micStatus.textContent =
+            "Диктовка остановлена. Нажмите на микрофон ещё раз, чтобы продолжить.";
+        });
+
+        recognition.addEventListener("error", (event) => {
+          console.warn("Speech recognition error", event.error);
+          micStatus.textContent = "Ошибка распознавания: " + event.error;
+          recognition.stop();
+        });
+
+        recognition.addEventListener("result", (event) => {
+          let interim = "";
+          let finalTranscript = "";
+          for (let i = event.resultIndex; i < event.results.length; i += 1) {
+            const result = event.results[i];
+            if (result.isFinal) {
+              finalTranscript += result[0].transcript.trim();
+            } else {
+              interim += result[0].transcript;
+            }
+          }
+          if (interim) {
+            micStatus.textContent = `Промежуточно: ${interim.trim()}`;
+          }
+          if (finalTranscript) {
+            const cleaned = finalTranscript.replace(/\s{2,}/g, " ").trim();
+            appendNote(cleaned);
+            parseSpeech(cleaned);
+            persistState();
+          }
+        });
+
+        micButton.addEventListener("click", toggleListening);
+      }
+
+      clearNotesButton.addEventListener("click", () => {
+        notesField.value = "";
+        persistState();
+      });
+
+      notesField.addEventListener("input", persistState);
+
+      addressInput.addEventListener("input", () => {
+        persistState();
+        updateSummary();
+        scheduleGeocode();
+      });
+
+      amountInput.addEventListener("change", () => {
+        if (amountInput.value.trim()) {
+          amountInput.value = formatAmount(amountInput.value);
+        }
+        persistState();
+        updateSummary();
+      });
+
+      amountInput.addEventListener("input", () => {
+        persistState();
+        updateSummary();
+      });
+
+      phoneInput.addEventListener("change", () => {
+        if (phoneInput.value.trim()) {
+          const formatted = prettyPhone(phoneInput.value);
+          if (normalizePhone(formatted)) {
+            phoneInput.value = formatted;
+          }
+        }
+        persistState();
+        updateSummary();
+      });
+
+      phoneInput.addEventListener("input", () => {
+        persistState();
+        updateSummary();
+      });
+
+      routeButton.addEventListener("click", () => {
+        const address = addressInput.value.trim();
+        if (!address) return;
+        if (currentGeocode) {
+          const url = `https://yandex.ru/maps/?rtext=~${currentGeocode.lat},${currentGeocode.lon}&rtt=auto`;
+          window.open(url, "_blank");
+        } else {
+          const fallback = `https://yandex.ru/maps/?text=${encodeURIComponent(address)}`;
+          window.open(fallback, "_blank");
+        }
+      });
+
+      callButton.addEventListener("click", () => {
+        const phone = normalizePhone(phoneInput.value.trim());
+        if (!phone) return;
+        window.location.href = `tel:${phone}`;
+      });
+
+      navigatorButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        const address = addressInput.value.trim();
+        if (!address) return;
+        if (currentGeocode) {
+          const { lat, lon } = currentGeocode;
+          const schemeUrl = `yandexnavi://build_route?lat_to=${lat}&lon_to=${lon}`;
+          window.location.href = schemeUrl;
+          setTimeout(() => {
+            window.open(`https://yandex.ru/maps/?rtext=~${lat},${lon}&rtt=auto`, "_blank");
+          }, 1200);
+        } else {
+          window.open(`https://yandex.ru/maps/?text=${encodeURIComponent(address)}`, "_blank");
+        }
+      });
+
+      loadState();
+      updateSummary();
+      if (addressInput.value.trim()) {
+        scheduleGeocode();
+      }
+      setupRecognition();
+    })();
+  </script>
 </body>
 </html>
