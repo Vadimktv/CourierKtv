@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import type { ChangeEvent, MouseEvent } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,6 +39,8 @@ export function ReceiptProcessor({ onClose, onReceiptProcessed }: ReceiptProcess
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [hasHandwrittenSum, setHasHandwrittenSum] = useState(false);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const [formData, setFormData] = useState({
     restaurant: '',
     fullAddress: '',
@@ -53,13 +56,33 @@ export function ReceiptProcessor({ onClose, onReceiptProcessed }: ReceiptProcess
         toast.error('Файл слишком большой. Максимальный размер 5МБ');
         return;
       }
-      
+
       setUploadedFile(file);
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
       processReceipt(file);
     }
   }, []);
+
+  const handleManualFileChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      onDrop([file]);
+    }
+    event.target.value = '';
+  }, [onDrop]);
+
+  const handleOpenGallery = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    galleryInputRef.current?.click();
+  };
+
+  const handleOpenCamera = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    cameraInputRef.current?.click();
+  };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -179,6 +202,21 @@ export function ReceiptProcessor({ onClose, onReceiptProcessed }: ReceiptProcess
                 }`}
               >
                 <input {...getInputProps()} />
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handleManualFileChange}
+                />
+                <input
+                  ref={galleryInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleManualFileChange}
+                />
                 <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-lg font-semibold mb-2">
                   {isDragActive ? 'Отпустите файл здесь' : 'Загрузите фото чека'}
@@ -187,11 +225,11 @@ export function ReceiptProcessor({ onClose, onReceiptProcessed }: ReceiptProcess
                   Перетащите изображение или нажмите для выбора
                 </p>
                 <div className="flex items-center justify-center gap-4">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" type="button" onClick={handleOpenCamera}>
                     <Camera className="mr-2 h-4 w-4" />
                     Камера
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" type="button" onClick={handleOpenGallery}>
                     <Upload className="mr-2 h-4 w-4" />
                     Галерея
                   </Button>

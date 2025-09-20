@@ -374,7 +374,9 @@
         <div class="summary">
           <h3>Итог</h3>
           <ul id="summaryList">
-            <li>Адрес: <span class="muted">не указан</span></li>
+            <li>Улица: <span class="muted">не указана</span></li>
+            <li>Дом: <span class="muted">не указан</span></li>
+            <li>Дополнительно: <span class="muted">нет данных</span></li>
             <li>Телефон: <span class="muted">не указан</span></li>
             <li>Сумма: <span class="muted">не указана</span></li>
           </ul>
@@ -407,13 +409,301 @@
       let currentGeocode;
       let abortController;
 
+      function createEmptyComponents() {
+        return {
+          street: "",
+          houseNumber: "",
+          houseLabel: "",
+          building: "",
+          entrance: "",
+          floor: "",
+          apartment: "",
+          other: [],
+        };
+      }
+
+      let parsedAddressComponents = createEmptyComponents();
+      let parsedAddressString = "";
+
+      function normalizeAmountValue(rawValue) {
+        if (!rawValue) return "";
+        return rawValue.replace(/\s+/g, "").replace(/,/g, ".").replace(/[^\d.]/g, "");
+      }
+
+      function findAmountInfo(text) {
+        if (!text) return null;
+        const currencyRegex = /(\d[\d\s]*[.,]?\d*)\s*(?:₽|руб(?:\.|ля|лей)?|р\b|тенге|тг|сом|сомони|kzt|₸|usd|\$|eur|€)/i;
+        const currencyMatch = text.match(currencyRegex);
+        if (currencyMatch && typeof currencyMatch.index === "number") {
+          return {
+            amount: normalizeAmountValue(currencyMatch[1]),
+            range: [currencyMatch.index, currencyMatch.index + currencyMatch[0].length],
+          };
+        }
+
+        const keywordRegex =
+          /(?:сумма|стоимость|к оплате|оплата|итог(?:овая)?|получить|чек на|цен(?:а|у)|платеж|платёж)\s*(?:составляет|будет|=|:)?\s*([\d\s]+(?:[.,]\d+)?)/i;
+        const keywordMatch = text.match(keywordRegex);
+        if (keywordMatch && typeof keywordMatch.index === "number") {
+          return {
+            amount: normalizeAmountValue(keywordMatch[1]),
+            range: [keywordMatch.index, keywordMatch.index + keywordMatch[0].length],
+          };
+        }
+
+        const numberMatches = [...text.matchAll(/\d+(?:[.,]\d+)?/g)].map((match) => ({
+          value: normalizeAmountValue(match[0]),
+          index: match.index ?? 0,
+          length: match[0].length,
+        }));
+
+        if (numberMatches.length >= 2) {
+          const addressQualifier = /(корп|корпус|кв|квартира|подъезд|пд|под\.|эт|этаж|стр|строение|литер|офис|оф\.|пом|склад|д\.|дом)/i;
+          const last = numberMatches[numberMatches.length - 1];
+          const beforeLast = numberMatches[numberMatches.length - 2];
+          const preceding = text.slice(Math.max(0, last.index - 16), last.index);
+          const following = text.slice(last.index + last.length, last.index + last.length + 16);
+          const lastNumber = parseFloat(last.value);
+          const beforeLastNumber = parseFloat(beforeLast.value);
+          if (
+            Number.isFinite(lastNumber) &&
+            Number.isFinite(beforeLastNumber) &&
+            !addressQualifier.test(preceding) &&
+            !addressQualifier.test(following) &&
+            lastNumber >= 100 &&
+            lastNumber >= beforeLastNumber
+          ) {
+            return {
+              amount: last.value,
+              range: [last.index, last.index + last.length],
+            };
+          }
+
+          const large = numberMatches.find((match) => match.value.length >= 4 || parseFloat(match.value) >= 500);
+          if (large && Number.isFinite(parseFloat(large.value))) {
+            return {
+              amount: large.value,
+              range: [large.index, large.index + large.length],
+            };
+          }
+        }
+
+        return null;
+      }
+
+      function removeRangeFromText(text, range) {
+        if (!range) return text;
+        const [start, end] = range;
+        return `${text.slice(0, start)} ${text.slice(end)}`;
+      }
+
+      function separateAddressAndAmount(raw) {
+        if (!raw) {
+          return { address: "", amount: "" };
+        }
+
+        let working = raw;
+        const info = findAmountInfo(working);
+        let amount = "";
+
+        if (info) {
+          amount = info.amount;
+          working = removeRangeFromText(working, info.range);
+        }
+
+        working = working.replace(
+          /(?:сумма|стоимость|к оплате|оплата|итог(?:овая)?|получить|чек на|цен(?:а|у)|платеж|платёж)\s*(?:составляет|будет|=|:)?\s*/gi,
+          " "
+        );
+        working = working.replace(/\s{2,}/g, " ");
+
+        return { address: tidyAddress(working), amount };
+      }
+
+      function extractAddressComponents(address) {
+        const result = createEmptyComponents();
+        if (!address) {
+          return result;
+        }
+
+        const segments = address
+          .split(/[,;]/)
+          .map((segment) => tidyAddress(segment))
+          .filter((segment) => segment.length > 0);
+
+        if (!segments.length) {
+          return result;
+        }
+
+        const used = new Set();
+        const streetKeywords =
+          /(ул\.?|улица|просп\.?|проспект|пер\.?|переулок|шоссе|ш\.?|площадь|пл\.?|наб\.?|набережная|бульвар|бул\.?|тракт|проезд|микрорайон|мкр\.?|аллея|дорога)/i;
+
+        let streetIndex = segments.findIndex((segment) => streetKeywords.test(segment));
+        if (streetIndex === -1) {
+          streetIndex = 0;
+        }
+
+        const streetSegment = segments[streetIndex];
+        used.add(streetIndex);
+
+        let street = streetSegment;
+        let houseNumber = "";
+        let houseLabel = "";
+
+        const explicitHouse = streetSegment.match(/(?:дом|д\.?|№|no\.?|house)\s*([0-9A-Za-zА-Яа-я/-]+)/i);
+        if (explicitHouse) {
+          houseNumber = explicitHouse[1].trim();
+          houseLabel = explicitHouse[0].trim();
+          const before = streetSegment.slice(0, explicitHouse.index).replace(/[,\.\s]+$/, "").trim();
+          street = before || street;
+        } else {
+          const trailingHouse = streetSegment.match(/(.+?)\s+(\d+[A-Za-zА-Яа-я/-]*)$/);
+          if (trailingHouse) {
+            street = trailingHouse[1].trim();
+            houseNumber = trailingHouse[2].trim();
+            houseLabel = trailingHouse[2].trim();
+          }
+        }
+
+        const assignComponent = (key, value, index) => {
+          if (!result[key]) {
+            result[key] = value.trim();
+            used.add(index);
+            return true;
+          }
+          return false;
+        };
+
+        for (let i = 0; i < segments.length; i += 1) {
+          if (used.has(i)) continue;
+          const segment = segments[i];
+
+          if (!houseNumber) {
+            const directHouse = segment.match(/^(?:д\.?|дом|№|no\.?|house)\s*([0-9A-Za-zА-Яа-я/-]+)/i);
+            if (directHouse) {
+              houseNumber = directHouse[1].trim();
+              houseLabel = segment.trim();
+              used.add(i);
+              continue;
+            }
+
+            if (/^\d+[A-Za-zА-Яа-я/-]*$/.test(segment)) {
+              houseNumber = segment.trim();
+              houseLabel = segment.trim();
+              used.add(i);
+              continue;
+            }
+          }
+
+          if (/^(?:корп(?:ус)?|к\.?|строение|стр\.?|литер)/i.test(segment)) {
+            assignComponent("building", segment, i);
+            continue;
+          }
+          if (/^(?:подъезд|под\.?|пд\.?)/i.test(segment)) {
+            assignComponent("entrance", segment, i);
+            continue;
+          }
+          if (/^(?:этаж|эт\.?)/i.test(segment)) {
+            assignComponent("floor", segment, i);
+            continue;
+          }
+          if (/^(?:кв\.?|квартира|ап\.?|оф\.?|офис)/i.test(segment)) {
+            assignComponent("apartment", segment, i);
+            continue;
+          }
+        }
+
+        result.street = street.trim();
+        result.houseNumber = houseNumber.trim();
+        result.houseLabel = houseLabel.trim() || houseNumber.trim();
+        result.other = segments.filter((_, index) => !used.has(index));
+
+        if (!result.street && segments.length) {
+          result.street = segments[0];
+        }
+
+        return result;
+      }
+
+      function composeAddressFromComponents(components) {
+        const parts = [];
+        if (components.street) {
+          parts.push(components.street);
+        }
+        if (components.houseNumber) {
+          parts.push(components.houseNumber);
+        }
+        if (components.building) {
+          parts.push(components.building);
+        }
+        if (components.entrance) {
+          parts.push(components.entrance);
+        }
+        if (components.floor) {
+          parts.push(components.floor);
+        }
+        if (components.apartment) {
+          parts.push(components.apartment);
+        }
+        if (components.other && components.other.length) {
+          parts.push(...components.other);
+        }
+        return parts.join(", ");
+      }
+
+      function parseOrderInput(rawAddress) {
+        const { address, amount } = separateAddressAndAmount(rawAddress);
+        const components = extractAddressComponents(address);
+        const composed = composeAddressFromComponents(components);
+        return {
+          address: composed || address,
+          amount,
+          components,
+        };
+      }
+
+      function updateParsedAddress(rawAddress, options = {}) {
+        const { setInput = false, preferExistingAmount = false, skipAmountUpdate = false } = options;
+        const parsed = parseOrderInput(rawAddress);
+        parsedAddressComponents = parsed.components;
+        parsedAddressString = parsed.address || tidyAddress(rawAddress);
+        if (setInput) {
+          addressInput.value = parsed.address;
+        }
+        if (!skipAmountUpdate && parsed.amount && (!preferExistingAmount || !amountInput.value.trim())) {
+          amountInput.value = formatAmount(parsed.amount);
+        }
+        return parsed;
+      }
+
+      function buildAdditionalDetails(components) {
+        const details = [];
+        if (components.building) details.push(components.building);
+        if (components.entrance) details.push(components.entrance);
+        if (components.floor) details.push(components.floor);
+        if (components.apartment) details.push(components.apartment);
+        if (components.other && components.other.length) {
+          details.push(components.other.join(", "));
+        }
+        return details.join(", ");
+      }
+
       function loadState() {
         try {
           const raw = localStorage.getItem(STORAGE_KEY);
           if (!raw) return;
           const state = JSON.parse(raw);
-          if (state.address) addressInput.value = state.address;
-          if (state.amount) amountInput.value = state.amount;
+          const hasStoredAmount = Boolean(state.amount && String(state.amount).trim());
+          if (state.address) {
+            addressInput.value = state.address;
+            updateParsedAddress(state.address, {
+              setInput: true,
+              preferExistingAmount: hasStoredAmount,
+              skipAmountUpdate: hasStoredAmount,
+            });
+          }
+          if (hasStoredAmount) amountInput.value = state.amount;
           if (state.phone) phoneInput.value = state.phone;
           if (state.notes) notesField.value = state.notes;
         } catch (error) {
@@ -436,18 +726,25 @@
       }
 
       function updateSummary() {
-        const address = addressInput.value.trim();
+        const rawAddress = addressInput.value.trim();
         const phone = phoneInput.value.trim();
         const amount = amountInput.value.trim();
 
+        const streetDisplay = parsedAddressComponents.street || parsedAddressString || rawAddress;
+        const houseDisplay = parsedAddressComponents.houseLabel || parsedAddressComponents.houseNumber;
+        const additionalDetails = buildAdditionalDetails(parsedAddressComponents);
+        const hasAddress = Boolean(rawAddress || parsedAddressString);
+
         summaryList.innerHTML = `
-          <li>Адрес: ${address ? `<strong>${address}</strong>` : '<span class="muted">не указан</span>'}</li>
+          <li>Улица: ${streetDisplay ? `<strong>${streetDisplay}</strong>` : '<span class="muted">не указана</span>'}</li>
+          <li>Дом: ${houseDisplay ? `<strong>${houseDisplay}</strong>` : hasAddress ? '<span class="muted">не распознан</span>' : '<span class="muted">не указан</span>'}</li>
+          <li>Дополнительно: ${additionalDetails ? `<strong>${additionalDetails}</strong>` : '<span class="muted">нет данных</span>'}</li>
           <li>Телефон: ${phone ? `<strong>${phone}</strong>` : '<span class="muted">не указан</span>'}</li>
           <li>Сумма: ${amount ? `<strong>${amount}</strong>` : '<span class="muted">не указана</span>'}</li>
         `;
 
         callButton.disabled = !normalizePhone(phone);
-        if (!address) {
+        if (!rawAddress) {
           routeButton.disabled = true;
           navigatorButton.classList.add("disabled");
           navigatorButton.setAttribute("aria-disabled", "true");
@@ -458,7 +755,7 @@
           navigatorButton.removeAttribute("tabindex");
         }
 
-        if (!address) {
+        if (!rawAddress) {
           geocodeStatus.textContent = "";
           currentGeocode = null;
           routeButton.disabled = true;
@@ -514,16 +811,9 @@
       }
 
       function parseSpeech(transcript) {
-        const normalized = transcript.toLowerCase();
-        const amountMatch = normalized.match(/(?:сумма|оплата|стоимость|к оплате|получить|итог)\s*(?:составляет|будет|)\s*([\d\s]+(?:[\.,]\d+)?)/);
-        if (amountMatch) {
-          amountInput.value = formatAmount(amountMatch[1]);
-        } else {
-          const numberCandidates = [...transcript.matchAll(/\b\d{2,6}\b/g)].map((match) => match[0]);
-          const amountCandidate = numberCandidates.find((value) => value.length <= 6);
-          if (amountCandidate && !normalized.includes(amountCandidate.repeat(2))) {
-            amountInput.value = formatAmount(amountCandidate);
-          }
+        const amountInfo = findAmountInfo(transcript);
+        if (amountInfo) {
+          amountInput.value = formatAmount(amountInfo.amount);
         }
 
         const phoneMatch = transcript.match(/(?:телефон|номер|контакт)\s*(?:клиента|получателя|)\s*(?:номер|)\s*([\+\d\s\-()]{7,})/i);
@@ -543,17 +833,33 @@
           }
         }
 
-        const addressMatch = transcript.match(/(?:адрес(?: доставки)?|ехать(?: к| в)?|везти(?: в)?|доставка(?: в)?|куда ехать)\s*(?:[:\-]?\s*)([^\.]+?)(?:\s*(?:сумма|оплата|телефон|номер|контакт|руб|р\b|$))/i);
+        const addressMatch = transcript.match(
+          /(?:адрес(?: доставки)?|ехать(?: к| в)?|везти(?: в)?|доставка(?: в)?|куда ехать|куда везти|по адресу)\s*(?:[:\-]?\s*)([^\.]+?)(?:\s*(?:сумма|стоимость|оплата|итог|телефон|номер|контакт|руб(?:ля|лей)?|р\b|тенге|тг|сом|$))/i
+        );
         if (addressMatch) {
-          const address = tidyAddress(addressMatch[1]);
-          if (address) {
-            addressInput.value = address;
+          const parsed = updateParsedAddress(addressMatch[1], {
+            setInput: true,
+            preferExistingAmount: Boolean(amountInfo),
+            skipAmountUpdate: Boolean(amountInfo),
+          });
+          if (!amountInfo && parsed.amount) {
+            amountInput.value = formatAmount(parsed.amount);
           }
         } else if (!addressInput.value.trim()) {
           const streetMatch = transcript.match(/(?:ул\.?|улица|проспект|площадь|шоссе|пер\.?|дом|д\.?)\s*[^,.]+/i);
           if (streetMatch) {
-            addressInput.value = tidyAddress(streetMatch[0]);
+            updateParsedAddress(streetMatch[0], {
+              setInput: true,
+              preferExistingAmount: Boolean(amountInfo),
+              skipAmountUpdate: Boolean(amountInfo),
+            });
           }
+        } else {
+          updateParsedAddress(addressInput.value, {
+            setInput: false,
+            preferExistingAmount: true,
+            skipAmountUpdate: true,
+          });
         }
 
         persistState();
@@ -563,11 +869,24 @@
 
       function tidyAddress(raw) {
         if (!raw) return "";
-        return raw
-          .replace(/^(по\s+адресу|в|к|на)\s+/i, "")
-          .replace(/[.,;]+$/, "")
-          .replace(/\s{2,}/g, " ")
-          .trim();
+        let result = raw.replace(/\s{2,}/g, " ").trim();
+        const leadingPatterns = [
+          /^(?:по\s+адресу|адрес(?:\s+доставки)?|адрес|куда ехать|куда везти|куда|ехать(?: в| к)?|везти(?: в)?|доставка(?: в)?|по направлению)\s+/i,
+          /^(?:нужно\s+ехать|нужно\s+везти|надо\s+ехать|надо\s+везти)\s+/i,
+        ];
+        let changed = true;
+        while (changed) {
+          changed = false;
+          for (const pattern of leadingPatterns) {
+            if (pattern.test(result)) {
+              result = result.replace(pattern, "").trim();
+              changed = true;
+            }
+          }
+        }
+        result = result.replace(/^(?:в|к)\s+/i, "");
+        result = result.replace(/[.,;]+$/, " ").replace(/\s{2,}/g, " ").trim();
+        return result;
       }
 
       function scheduleGeocode() {
@@ -706,6 +1025,21 @@
       notesField.addEventListener("input", persistState);
 
       addressInput.addEventListener("input", () => {
+        updateParsedAddress(addressInput.value, {
+          setInput: false,
+          preferExistingAmount: true,
+          skipAmountUpdate: true,
+        });
+        persistState();
+        updateSummary();
+        scheduleGeocode();
+      });
+
+      addressInput.addEventListener("change", () => {
+        updateParsedAddress(addressInput.value, {
+          setInput: true,
+          preferExistingAmount: true,
+        });
         persistState();
         updateSummary();
         scheduleGeocode();
@@ -775,6 +1109,11 @@
       });
 
       loadState();
+      updateParsedAddress(addressInput.value, {
+        setInput: true,
+        preferExistingAmount: true,
+        skipAmountUpdate: true,
+      });
       updateSummary();
       if (addressInput.value.trim()) {
         scheduleGeocode();
