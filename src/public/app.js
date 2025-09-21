@@ -200,22 +200,139 @@ async function sendReceipt(file) {
 }
 
 function handleServerResult(result) {
-  transcriptBox.textContent = result.normalizedText || result.text || '—';
-  if (result.data) {
-    if (result.data.address) {
-      addressInput.value = result.data.address;
-    }
-    if (result.data.amount !== null && result.data.amount !== undefined) {
-      amountInput.value = result.data.amount;
-    }
-    if (result.data.phone) {
-      phoneInput.value = formatPhone(result.data.phone);
-    }
-  }
+  const rawText = result.normalizedText || result.text || '';
+  const normalizedText = typeof rawText === 'string' ? rawText.trim() : '';
+  transcriptBox.textContent = normalizedText || '—';
+
+  const parsed = parseRecognizedText(normalizedText);
+  addressInput.value = parsed.address;
+  amountInput.value = parsed.amount;
+  phoneInput.value = parsed.phone ? formatPhone(parsed.phone) : '';
 
   updateCallAction();
   updateRouteAction();
-  renderWarnings(result.warnings || []);
+
+  const serverWarnings = Array.isArray(result.warnings) ? result.warnings : [];
+  const combinedWarnings = mergeWarnings(serverWarnings, buildParsingWarnings(parsed));
+  renderWarnings(combinedWarnings);
+}
+
+function parseRecognizedText(text) {
+  if (!text) {
+    return { address: '', amount: '', phone: '' };
+  }
+
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return { address: '', amount: '', phone: '' };
+  }
+
+  const address = extractAddressFromText(normalized);
+  const amount = extractAmountFromText(normalized);
+  const phone = extractPhoneFromText(normalized);
+
+  return {
+    address,
+    amount,
+    phone,
+  };
+}
+
+function extractAddressFromText(text) {
+  const match = text.match(/^(.+?)(?=\sсумма|\sтелефон|$)/i);
+  if (!match) {
+    return '';
+  }
+
+  let address = match[1] || '';
+  address = address.replace(/^(?:адрес|по адресу)[\s:,-]*/i, '');
+  address = cleanAddressText(address);
+  return address;
+}
+
+function extractAmountFromText(text) {
+  const compactNumbers = text.replace(/(\d)\s+(?=\d)/g, '$1');
+  const match = compactNumbers.match(/(\d{2,6})\s?(?:р|руб|₽)/i);
+  if (!match) {
+    return '';
+  }
+  return match[1].replace(/\s+/g, '');
+}
+
+function extractPhoneFromText(text) {
+  const compact = text.replace(/[\s\-()]/g, '');
+  const match = compact.match(/(\+7|8)\d{10}/);
+  if (!match) {
+    return '';
+  }
+
+  const raw = match[0];
+  return normalizePhone(raw) || '';
+}
+
+function normalizePhone(value) {
+  if (!value) {
+    return '';
+  }
+  const digits = value.replace(/\D/g, '');
+  if (!digits) {
+    return '';
+  }
+
+  let normalized = digits;
+  if (normalized.length === 11 && normalized.startsWith('8')) {
+    normalized = `7${normalized.slice(1)}`;
+  }
+  if (normalized.length === 10) {
+    normalized = `7${normalized}`;
+  }
+  if (normalized.length !== 11 || !normalized.startsWith('7')) {
+    return '';
+  }
+  return `+${normalized}`;
+}
+
+function cleanAddressText(value) {
+  if (!value) {
+    return '';
+  }
+
+  return value
+    .replace(/\s+/g, ' ')
+    .replace(/\s*,\s*/g, ', ')
+    .replace(/,+/g, ',')
+    .replace(/^[,\.\s]+/g, '')
+    .replace(/[\s,.;:-]+$/g, '')
+    .trim();
+}
+
+function buildParsingWarnings(parsed) {
+  const warnings = [];
+  if (!parsed.address) {
+    warnings.push('Адрес не найден в тексте');
+  }
+  if (!parsed.amount) {
+    warnings.push('Сумма не найдена в тексте');
+  }
+  if (!parsed.phone) {
+    warnings.push('Телефон не найден в тексте');
+  }
+  return warnings;
+}
+
+function mergeWarnings(serverWarnings, parsingWarnings) {
+  const seen = new Set();
+  const result = [];
+
+  [...serverWarnings, ...parsingWarnings].forEach((warning) => {
+    if (!warning || seen.has(warning)) {
+      return;
+    }
+    seen.add(warning);
+    result.push(warning);
+  });
+
+  return result;
 }
 
 function renderWarnings(items) {
