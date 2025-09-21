@@ -27,12 +27,15 @@ npm run dev
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=whisper-1          # необязательно
 GOOGLE_VISION_API_KEY=...        # ключ Google Cloud Vision API
+OCR_SPACE_API_KEY=helloworld     # резервный ключ OCR.space (опционально)
 MOCK_TRANSCRIBE_TEXT=...         # необязательный текст для офлайн-демо
 MOCK_OCR_TEXT=...                # необязательный текст для офлайн-демо
 PORT=3000                        # необязательно
 ```
 
 Если ключи OpenAI/Google Vision отсутствуют, сервер вернёт содержимое переменных `MOCK_TRANSCRIBE_TEXT` / `MOCK_OCR_TEXT` (или пустую строку). Это удобно для локальной отладки без внешних API.
+
+При отсутствии `GOOGLE_VISION_API_KEY` приложение автоматически переключится на бесплатный OCR сервис [OCR.space](https://ocr.space/). При желании можно задать собственный ключ через `OCR_SPACE_API_KEY` (по умолчанию используется демо-ключ `helloworld`).
 
 ### Скрипты npm
 
