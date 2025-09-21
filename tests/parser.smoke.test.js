@@ -27,6 +27,12 @@ function run() {
   expectEqual(fallbackParsed.amount, null, 'Amount is missing');
   expectEqual(fallbackParsed.phone, '+79185553322', 'Phone extracted from fallback');
 
+  const sampleText = 'Грибоедова 25 сумма 1500 р телефон 8 999 123 45 67';
+  const sampleParsed = parseCourierText(sampleText);
+  expectEqual(sampleParsed.address, 'Грибоедова 25', 'Sample address parsed');
+  expectEqual(sampleParsed.amount, 1500, 'Sample amount parsed');
+  expectEqual(sampleParsed.phone, '+79991234567', 'Sample phone normalized');
+
   console.log('Parser smoke tests passed');
 }
 

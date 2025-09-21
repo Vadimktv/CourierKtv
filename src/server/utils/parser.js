@@ -1,6 +1,6 @@
-const PHONE_REGEX = /(?:\+?7|8)[\s\-()]*\d{3}[\s\-()]*\d{3}[\s\-()]*\d{2}[\s\-()]*\d{2}/g;
-const GENERIC_AMOUNT_REGEX = /(\d+[\s\d]*[\.,]?\d*)\s*(?:руб(?:лей|ля|\b)|₽|р\b)/i;
-const LABELED_AMOUNT_REGEX = /(сумма|итого|к\s*оплате|получилось|всего)[^\d]*(\d+[\s\d]*[\.,]?\d*)/i;
+const PHONE_REGEX = /(\+7|8)\d{10}/;
+const AMOUNT_REGEX = /(\d{2,6})\s?(?:р|руб|₽)/i;
+const ADDRESS_REGEX = /^(.+?)(?=\sсумма|\sтелефон|$)/i;
 
 function parseCourierText(text) {
   if (!text || typeof text !== 'string') {
@@ -14,11 +14,19 @@ function parseCourierText(text) {
   }
 
   const normalizedWhitespace = text.replace(/\s+/g, ' ').trim();
-  const lower = normalizedWhitespace.toLowerCase();
+  if (!normalizedWhitespace) {
+    return {
+      normalizedText: '',
+      address: null,
+      amount: null,
+      phone: null,
+      warnings: ['Не удалось распознать текст'],
+    };
+  }
 
   const phone = extractPhone(normalizedWhitespace);
   const amount = extractAmount(normalizedWhitespace);
-  const address = extractAddress(normalizedWhitespace, lower);
+  const address = extractAddress(normalizedWhitespace);
 
   const warnings = [];
   if (!address) {
@@ -41,97 +49,94 @@ function parseCourierText(text) {
 }
 
 function extractPhone(text) {
-  const matches = [...text.matchAll(PHONE_REGEX)];
-  if (matches.length === 0) {
+  if (!text) {
     return null;
   }
 
-  for (const match of matches) {
-    const digits = match[0].replace(/\D/g, '');
-    const normalized = normalizePhoneDigits(digits);
-    if (normalized) {
-      return normalized;
-    }
+  const compact = text.replace(/[\s\-()]/g, '');
+  const match = compact.match(PHONE_REGEX);
+  if (!match) {
+    return null;
   }
-  return null;
+
+  return normalizePhoneDigits(match[0]);
 }
 
 function normalizePhoneDigits(digits) {
   if (!digits) {
     return null;
   }
-  let cleaned = digits;
-  if (cleaned.length === 11 && cleaned.startsWith('8')) {
-    cleaned = `7${cleaned.slice(1)}`;
+  const onlyDigits = String(digits).replace(/\D/g, '');
+  if (!onlyDigits) {
+    return null;
   }
-  if (cleaned.length === 10) {
-    cleaned = `7${cleaned}`;
+
+  let normalized = onlyDigits;
+  if (normalized.length === 11 && normalized.startsWith('8')) {
+    normalized = `7${normalized.slice(1)}`;
   }
-  if (cleaned.length === 11 && cleaned.startsWith('7')) {
-    return `+7${cleaned.slice(1)}`;
+  if (normalized.length === 10) {
+    normalized = `7${normalized}`;
   }
-  return null;
+  if (normalized.length !== 11 || !normalized.startsWith('7')) {
+    return null;
+  }
+
+  return `+${normalized}`;
 }
 
 function extractAmount(text) {
-  const labeledMatch = LABELED_AMOUNT_REGEX.exec(text.toLowerCase());
-  if (labeledMatch) {
-    return toNumber(labeledMatch[2]);
-  }
-
-  const genericMatch = GENERIC_AMOUNT_REGEX.exec(text.toLowerCase());
-  if (genericMatch) {
-    return toNumber(genericMatch[1]);
-  }
-
-  const digits = text.replace(/[^0-9]/g, '');
-  if (digits.length >= 2 && digits.length <= 6) {
-    return toNumber(digits);
-  }
-
-  return null;
-}
-
-function toNumber(raw) {
-  if (!raw) {
+  if (!text) {
     return null;
   }
-  const normalized = raw.replace(/\s+/g, '').replace(',', '.');
-  const value = Number.parseFloat(normalized);
+
+  const compact = text.replace(/(\d)\s+(?=\d)/g, '$1');
+  const match = compact.match(AMOUNT_REGEX);
+  if (!match) {
+    return null;
+  }
+
+  const numeric = match[1].replace(/\s+/g, '');
+  const value = Number.parseInt(numeric, 10);
   if (Number.isNaN(value)) {
     return null;
   }
-  return Number.isInteger(value) ? value : Number(value.toFixed(2));
+
+  return value;
 }
 
-function extractAddress(original, lower) {
-  let endIndex = original.length;
-  const sumIndex = lower.indexOf('сумм');
-  const phoneIndex = lower.indexOf('тел');
-  if (sumIndex >= 0) {
-    endIndex = Math.min(endIndex, sumIndex);
-  }
-  if (phoneIndex >= 0) {
-    endIndex = Math.min(endIndex, phoneIndex);
-  }
-
-  let startIndex = 0;
-  const addressMatch = /(?:адрес|по адресу)[:\s-]*/i.exec(original);
-  if (addressMatch) {
-    startIndex = addressMatch.index + addressMatch[0].length;
-  }
-
-  const segment = original.slice(startIndex, endIndex).trim();
-  const cleaned = segment.replace(/\s{2,}/g, ' ').replace(/[,:;\-\s]+$/, '').trim();
-
-  if (!cleaned) {
+function extractAddress(text) {
+  if (!text) {
     return null;
   }
 
-  return capitalizeFirst(cleaned);
+  const match = text.match(ADDRESS_REGEX);
+  if (!match) {
+    return null;
+  }
+
+  let address = match[1] || '';
+  address = address.replace(/^(?:адрес|по адресу)[\s:,-]*/i, '');
+  address = cleanAddress(address);
+
+  if (!address) {
+    return null;
+  }
+
+  return capitalizeWords(address);
 }
 
-function capitalizeFirst(value) {
+function cleanAddress(value) {
+  return String(value)
+    .replace(/\s+/g, ' ')
+    .replace(/\s*,\s*/g, ', ')
+    .replace(/,+/g, ',')
+    .replace(/^[,\.\s]+/g, '')
+    .replace(/[\s,.;:-]+$/g, '')
+    .trim();
+}
+
+function capitalizeWords(value) {
   if (!value) {
     return value;
   }
