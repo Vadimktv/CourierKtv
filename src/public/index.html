@@ -3,8 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Courier Voice Assistant</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <meta name="description" content="Голосовой помощник курьера: быстро фиксируйте заказы, стройте маршрут и учитывайте оплаты." />
+    <title>Courier Assist — голосовой помощник курьера</title>
+    <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -30,8 +31,9 @@
           <div id="transcript" class="transcript" aria-live="polite">—</div>
         </section>
 
-        <section class="form-card">
+        <section class="form-card" id="order-form-card">
           <div class="section-title">Данные доставки</div>
+          <div id="form-mode" class="form-mode" hidden>Новый заказ</div>
           <label class="input-group">
             <span>Адрес</span>
             <input
@@ -62,6 +64,19 @@
               placeholder="+7 999 123-45-67"
             />
           </label>
+          <label class="input-group">
+            <span>Комментарий</span>
+            <textarea
+              id="notes"
+              name="notes"
+              rows="2"
+              placeholder="Примечания или дополнительные контакты"
+            ></textarea>
+          </label>
+          <div class="form-actions">
+            <button id="save-order-button" class="primary-button" type="button">Сохранить заказ</button>
+            <button id="reset-form-button" class="secondary-button" type="button">Очистить</button>
+          </div>
         </section>
 
         <section class="actions-card">
@@ -79,6 +94,28 @@
           <div id="upload-hint" class="upload-hint">Фото будет обработано сразу после выбора.</div>
         </section>
 
+        <section class="orders-card">
+          <div class="section-header">
+            <div class="section-title">Активные заказы</div>
+            <a id="start-route-button" class="section-action disabled" href="#" rel="noopener" aria-disabled="true">Поехали</a>
+          </div>
+          <div id="active-orders-empty" class="empty-state">Добавьте заказы через форму выше, чтобы построить маршрут.</div>
+          <div id="active-orders-list" class="orders-list" aria-live="polite"></div>
+        </section>
+
+        <section class="history-card">
+          <div class="section-header">
+            <div class="section-title">Завершённые заказы</div>
+            <button id="finish-day-button" class="section-action outline" type="button">Завершить день</button>
+          </div>
+          <div id="completed-summary" class="summary-box empty">Заказов пока нет.</div>
+          <div id="completed-orders-list" class="history-list"></div>
+          <div id="cancelled-orders-wrapper" class="history-subsection" hidden>
+            <div class="subsection-title">Отменённые заказы</div>
+            <div id="cancelled-orders-list" class="history-list"></div>
+          </div>
+        </section>
+
         <section id="warnings" class="warnings" aria-live="assertive"></section>
       </main>
 
@@ -87,6 +124,34 @@
       </footer>
     </div>
 
-    <script src="/app.js" type="module"></script>
+    <div id="complete-overlay" class="modal" role="dialog" aria-modal="true" hidden>
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">Завершение заказа</div>
+          <button id="complete-close" class="icon-button" type="button" aria-label="Закрыть">✕</button>
+        </div>
+        <div class="modal-body">
+          <div id="complete-address" class="modal-address"></div>
+          <label class="input-group">
+            <span>Способ оплаты</span>
+            <select id="complete-method" name="complete-method">
+              <option value="cash">Наличные</option>
+              <option value="transfer">Перевод</option>
+              <option value="card">Карта</option>
+            </select>
+          </label>
+          <label class="input-group">
+            <span>Полученная сумма, ₽</span>
+            <input id="complete-amount" name="complete-amount" type="number" inputmode="decimal" placeholder="Сколько оплатил клиент" />
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button id="complete-cancel" class="secondary-button" type="button">Отмена</button>
+          <button id="complete-confirm" class="primary-button" type="button">Сохранить</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="./app.js" type="module"></script>
   </body>
 </html>

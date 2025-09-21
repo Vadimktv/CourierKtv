@@ -1,1125 +1,158 @@
 <!DOCTYPE html>
+<!-- Этот файл повторяет содержимое src/public/index.html для статического хостинга. Не забудьте обновлять оба файла одновременно. -->
 <html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CourierKTV — голосовой помощник курьера</title>
-  <meta
-    name="description"
-    content="Голосовой помощник курьера: продиктуйте адрес, сумму и контакты, чтобы быстро построить маршрут и связаться с клиентом."
-  />
-  <style>
-    :root {
-      color-scheme: light dark;
-      font-family: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      --bg-gradient: radial-gradient(circle at top left, #eef2ff, #e0f2fe);
-      --panel-bg: rgba(255, 255, 255, 0.9);
-      --text-color: #0f172a;
-      --accent: #2563eb;
-      --accent-strong: #1d4ed8;
-      --muted: #64748b;
-      --border: rgba(148, 163, 184, 0.35);
-      --shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
-      --radius-lg: 20px;
-      --radius-sm: 12px;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Голосовой помощник курьера: быстро фиксируйте заказы, стройте маршрут и учитывайте оплаты." />
+    <title>Courier Assist — голосовой помощник курьера</title>
+    <link rel="stylesheet" href="./src/public/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="title-block">
+          <div class="title">Courier Assist</div>
+          <div class="subtitle">Говорите. Мы запишем.</div>
+        </div>
+        <div class="status" id="record-status">Готов к записи</div>
+      </header>
 
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      background: var(--bg-gradient);
-      color: var(--text-color);
-      padding: clamp(1.5rem, 2vw + 1rem, 3rem);
-    }
-
-    .app {
-      width: min(1100px, 100%);
-      display: flex;
-      flex-direction: column;
-      gap: clamp(1.5rem, 2vw, 2.25rem);
-    }
-
-    .header {
-      background: var(--panel-bg);
-      border-radius: var(--radius-lg);
-      padding: clamp(1.75rem, 2vw + 1rem, 2.5rem);
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border);
-    }
-
-    .header h1 {
-      margin: 0 0 0.75rem;
-      font-size: clamp(1.8rem, 2.8vw, 2.4rem);
-      color: var(--accent-strong);
-    }
-
-    .header p {
-      margin: 0;
-      max-width: 620px;
-      line-height: 1.6;
-      color: var(--muted);
-    }
-
-    .layout {
-      display: grid;
-      gap: clamp(1.25rem, 2vw, 2rem);
-    }
-
-    .panel {
-      background: var(--panel-bg);
-      border-radius: var(--radius-lg);
-      padding: clamp(1.5rem, 2vw + 1rem, 2.3rem);
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      gap: clamp(1rem, 1.5vw, 1.5rem);
-    }
-
-    .voice-panel h2,
-    .data-panel h2,
-    .summary h3 {
-      margin: 0 0 0.75rem;
-      font-size: clamp(1.25rem, 2vw, 1.5rem);
-    }
-
-    .mic-box {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-
-    .mic-button {
-      align-self: flex-start;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 0.85rem 1.7rem;
-      border-radius: 999px;
-      border: none;
-      background: var(--accent);
-      color: #fff;
-      font-size: 1.05rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-      box-shadow: 0 16px 35px rgba(37, 99, 235, 0.35);
-    }
-
-    .mic-button .mic-icon {
-      font-size: 1.4rem;
-    }
-
-    .mic-button:hover {
-      transform: translateY(-1px);
-      background: var(--accent-strong);
-      box-shadow: 0 20px 40px rgba(29, 78, 216, 0.38);
-    }
-
-    .mic-button.listening {
-      background: #ef4444;
-      box-shadow: 0 20px 45px rgba(239, 68, 68, 0.4);
-    }
-
-    .mic-button.listening:hover {
-      background: #dc2626;
-    }
-
-    .status {
-      font-size: 0.95rem;
-      color: var(--muted);
-    }
-
-    .transcript {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-
-    .transcript-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    .ghost-button {
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 0.4rem 0.9rem;
-      cursor: pointer;
-      color: var(--muted);
-      font-size: 0.9rem;
-      transition: border 0.2s ease, color 0.2s ease;
-    }
-
-    .ghost-button:hover {
-      color: var(--accent-strong);
-      border-color: rgba(37, 99, 235, 0.35);
-    }
-
-    textarea {
-      min-height: 120px;
-      resize: vertical;
-      padding: 0.9rem 1rem;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      font: inherit;
-      line-height: 1.5;
-      background: rgba(255, 255, 255, 0.85);
-      color: inherit;
-    }
-
-    textarea:focus,
-    input:focus {
-      outline: 3px solid rgba(37, 99, 235, 0.15);
-      border-color: rgba(37, 99, 235, 0.45);
-    }
-
-    .data-form {
-      display: grid;
-      gap: 1rem;
-    }
-
-    label {
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-      font-weight: 600;
-    }
-
-    input {
-      padding: 0.75rem 0.9rem;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      font: inherit;
-      background: rgba(255, 255, 255, 0.9);
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-    }
-
-    .actions button,
-    .actions a {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.4rem;
-      border-radius: var(--radius-sm);
-      padding: 0.85rem 1.3rem;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      background: var(--accent);
-      color: #fff;
-      text-decoration: none;
-      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-      box-shadow: 0 14px 35px rgba(37, 99, 235, 0.3);
-    }
-
-    .actions button.secondary,
-    .actions a.secondary {
-      background: #0f172a;
-      box-shadow: 0 14px 32px rgba(15, 23, 42, 0.35);
-    }
-
-    .actions button:hover:not(:disabled),
-    .actions a:hover:not(.disabled) {
-      transform: translateY(-1px);
-      background: var(--accent-strong);
-      box-shadow: 0 18px 38px rgba(29, 78, 216, 0.35);
-    }
-
-    .actions button.secondary:hover:not(:disabled),
-    .actions a.secondary:hover:not(.disabled) {
-      background: #1f2937;
-    }
-
-    .actions button:disabled,
-    .actions a.disabled {
-      cursor: not-allowed;
-      opacity: 0.6;
-      transform: none;
-      box-shadow: none;
-    }
-
-    .actions a.disabled {
-      background: #94a3b8;
-      color: #f1f5f9;
-    }
-
-    .summary {
-      background: rgba(148, 163, 184, 0.08);
-      border-radius: var(--radius-sm);
-      padding: 1rem 1.2rem;
-    }
-
-    .summary ul {
-      margin: 0;
-      padding-left: 1.1rem;
-      display: grid;
-      gap: 0.4rem;
-    }
-
-    .muted {
-      color: var(--muted);
-    }
-
-    .footer {
-      text-align: center;
-      font-size: 0.85rem;
-      color: var(--muted);
-    }
-
-    @media (min-width: 960px) {
-      .layout {
-        grid-template-columns: 1.1fr 0.9fr;
-      }
-    }
-
-    .mic-button:disabled,
-    .mic-button.disabled {
-      cursor: not-allowed;
-      opacity: 0.6;
-      box-shadow: none;
-      transform: none;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg-gradient: radial-gradient(circle at top left, #0f172a, #1e293b);
-        --panel-bg: rgba(15, 23, 42, 0.92);
-        --text-color: #f8fafc;
-        --muted: #cbd5f5;
-        --border: rgba(148, 163, 184, 0.3);
-        --shadow: 0 20px 50px rgba(2, 6, 23, 0.65);
-      }
-
-      textarea,
-      input {
-        background: rgba(15, 23, 42, 0.75);
-      }
-
-      .summary {
-        background: rgba(148, 163, 184, 0.12);
-      }
-
-      .actions button.secondary,
-      .actions a.secondary {
-        background: #1f2937;
-        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.6);
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="app">
-    <header class="header">
-      <h1>Голосовой помощник курьера</h1>
-      <p>
-        Нажмите на микрофон, продиктуйте адрес, сумму и контакт клиента. Система распознает важные данные, сохранит их и
-        подготовит быстрые кнопки для звонка и построения маршрута.
-      </p>
-    </header>
-    <main class="layout">
-      <section class="panel voice-panel">
-        <div class="mic-box">
-          <button id="micButton" type="button" class="mic-button">
-            <span class="mic-icon">🎙</span>
-            <span class="mic-label">Начать диктовку</span>
+      <main class="app-content">
+        <section class="record-card">
+          <button id="record-button" class="record-button">
+            <span class="record-icon" aria-hidden="true">🎤</span>
+            <span class="record-label">Удерживайте для записи</span>
           </button>
-          <p id="micStatus" class="status">
-            Говорите свободно: «Адрес улица Ленина 10, сумма 1500 рублей, телефон восемь девятьсот…» — поля заполнятся
-            автоматически.
-          </p>
-        </div>
-        <div class="transcript">
-          <div class="transcript-header">
-            <h2>Распознанный текст</h2>
-            <button id="clearNotes" type="button" class="ghost-button">Очистить</button>
+          <div class="record-helper">Отпустите кнопку, чтобы отправить. Уведите палец в сторону, чтобы отменить.</div>
+        </section>
+
+        <section class="transcript-card">
+          <div class="section-title">Распознанный текст</div>
+          <div id="transcript" class="transcript" aria-live="polite">—</div>
+        </section>
+
+        <section class="form-card" id="order-form-card">
+          <div class="section-title">Данные доставки</div>
+          <div id="form-mode" class="form-mode" hidden>Новый заказ</div>
+          <label class="input-group">
+            <span>Адрес</span>
+            <input
+              id="address"
+              name="address"
+              type="text"
+              autocomplete="street-address"
+              placeholder="Адрес доставки"
+            />
+          </label>
+          <label class="input-group">
+            <span>Сумма, ₽</span>
+            <input
+              id="amount"
+              name="amount"
+              type="number"
+              inputmode="decimal"
+              placeholder="1500 ₽"
+            />
+          </label>
+          <label class="input-group">
+            <span>Телефон</span>
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              autocomplete="tel"
+              placeholder="+7 999 123-45-67"
+            />
+          </label>
+          <label class="input-group">
+            <span>Комментарий</span>
+            <textarea
+              id="notes"
+              name="notes"
+              rows="2"
+              placeholder="Примечания или дополнительные контакты"
+            ></textarea>
+          </label>
+          <div class="form-actions">
+            <button id="save-order-button" class="primary-button" type="button">Сохранить заказ</button>
+            <button id="reset-form-button" class="secondary-button" type="button">Очистить</button>
           </div>
-          <textarea id="notesField" placeholder="История диктовки появится здесь…" spellcheck="false"></textarea>
-        </div>
-      </section>
-      <section class="panel data-panel">
-        <h2>Данные заказа</h2>
-        <form class="data-form" autocomplete="off">
-          <label>
-            Адрес доставки
-            <input id="addressInput" name="address" type="text" inputmode="text" placeholder="Например, ул. Ленина, 10" />
+        </section>
+
+        <section class="actions-card">
+          <a id="call-button" class="action-button disabled" href="#" rel="noopener" aria-disabled="true">Позвонить</a>
+          <a id="route-button" class="action-button secondary disabled" href="#" rel="noopener" aria-disabled="true" target="_blank">Маршрут</a>
+        </section>
+
+        <section class="upload-card">
+          <div class="section-title">Чек</div>
+          <input id="receipt-input" type="file" accept="image/*" hidden />
+          <label class="upload-button" for="receipt-input">
+            <span class="upload-icon" aria-hidden="true">📷</span>
+            <span>Загрузить фото чека</span>
           </label>
-          <label>
-            Контактный телефон
-            <input id="phoneInput" name="phone" type="tel" inputmode="tel" placeholder="Например, +7 999 123-45-67" />
-          </label>
-          <label>
-            Сумма к оплате
-            <input id="amountInput" name="amount" type="text" inputmode="decimal" placeholder="Например, 1500 ₽" />
-          </label>
-        </form>
-        <div class="actions">
-          <button id="routeButton" type="button" disabled>Построить маршрут</button>
-          <button id="callButton" type="button" disabled>Позвонить клиенту</button>
-          <a id="navigatorButton" class="secondary disabled" role="button" aria-disabled="true" tabindex="-1">Открыть в Яндекс.Навигаторе</a>
+          <div id="upload-hint" class="upload-hint">Фото будет обработано сразу после выбора.</div>
+        </section>
+
+        <section class="orders-card">
+          <div class="section-header">
+            <div class="section-title">Активные заказы</div>
+            <a id="start-route-button" class="section-action disabled" href="#" rel="noopener" aria-disabled="true">Поехали</a>
+          </div>
+          <div id="active-orders-empty" class="empty-state">Добавьте заказы через форму выше, чтобы построить маршрут.</div>
+          <div id="active-orders-list" class="orders-list" aria-live="polite"></div>
+        </section>
+
+        <section class="history-card">
+          <div class="section-header">
+            <div class="section-title">Завершённые заказы</div>
+            <button id="finish-day-button" class="section-action outline" type="button">Завершить день</button>
+          </div>
+          <div id="completed-summary" class="summary-box empty">Заказов пока нет.</div>
+          <div id="completed-orders-list" class="history-list"></div>
+          <div id="cancelled-orders-wrapper" class="history-subsection" hidden>
+            <div class="subsection-title">Отменённые заказы</div>
+            <div id="cancelled-orders-list" class="history-list"></div>
+          </div>
+        </section>
+
+        <section id="warnings" class="warnings" aria-live="assertive"></section>
+      </main>
+
+      <footer class="app-footer">
+        <span>Фиксируйте заказы без клавиатуры</span>
+      </footer>
+    </div>
+
+    <div id="complete-overlay" class="modal" role="dialog" aria-modal="true" hidden>
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">Завершение заказа</div>
+          <button id="complete-close" class="icon-button" type="button" aria-label="Закрыть">✕</button>
         </div>
-        <div class="summary">
-          <h3>Итог</h3>
-          <ul id="summaryList">
-            <li>Улица: <span class="muted">не указана</span></li>
-            <li>Дом: <span class="muted">не указан</span></li>
-            <li>Дополнительно: <span class="muted">нет данных</span></li>
-            <li>Телефон: <span class="muted">не указан</span></li>
-            <li>Сумма: <span class="muted">не указана</span></li>
-          </ul>
-          <p id="geocodeStatus" class="status"></p>
+        <div class="modal-body">
+          <div id="complete-address" class="modal-address"></div>
+          <label class="input-group">
+            <span>Способ оплаты</span>
+            <select id="complete-method" name="complete-method">
+              <option value="cash">Наличные</option>
+              <option value="transfer">Перевод</option>
+              <option value="card">Карта</option>
+            </select>
+          </label>
+          <label class="input-group">
+            <span>Полученная сумма, ₽</span>
+            <input id="complete-amount" name="complete-amount" type="number" inputmode="decimal" placeholder="Сколько оплатил клиент" />
+          </label>
         </div>
-      </section>
-    </main>
-    <footer class="footer">Данные сохраняются только на этом устройстве.</footer>
-  </div>
-  <script>
-    (function () {
-      const micButton = document.getElementById("micButton");
-      const micStatus = document.getElementById("micStatus");
-      const notesField = document.getElementById("notesField");
-      const clearNotesButton = document.getElementById("clearNotes");
-      const addressInput = document.getElementById("addressInput");
-      const amountInput = document.getElementById("amountInput");
-      const phoneInput = document.getElementById("phoneInput");
-      const routeButton = document.getElementById("routeButton");
-      const callButton = document.getElementById("callButton");
-      const navigatorButton = document.getElementById("navigatorButton");
-      const summaryList = document.getElementById("summaryList");
-      const geocodeStatus = document.getElementById("geocodeStatus");
-
-      const STORAGE_KEY = "courier-assistant-state-v1";
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      let recognition;
-      let isListening = false;
-      let geocodeTimer;
-      let currentGeocode;
-      let abortController;
-
-      function createEmptyComponents() {
-        return {
-          street: "",
-          houseNumber: "",
-          houseLabel: "",
-          building: "",
-          entrance: "",
-          floor: "",
-          apartment: "",
-          other: [],
-        };
-      }
-
-      let parsedAddressComponents = createEmptyComponents();
-      let parsedAddressString = "";
-
-      function normalizeAmountValue(rawValue) {
-        if (!rawValue) return "";
-        return rawValue.replace(/\s+/g, "").replace(/,/g, ".").replace(/[^\d.]/g, "");
-      }
-
-      function findAmountInfo(text) {
-        if (!text) return null;
-        const currencyRegex = /(\d[\d\s]*[.,]?\d*)\s*(?:₽|руб(?:\.|ля|лей)?|р\b|тенге|тг|сом|сомони|kzt|₸|usd|\$|eur|€)/i;
-        const currencyMatch = text.match(currencyRegex);
-        if (currencyMatch && typeof currencyMatch.index === "number") {
-          return {
-            amount: normalizeAmountValue(currencyMatch[1]),
-            range: [currencyMatch.index, currencyMatch.index + currencyMatch[0].length],
-          };
-        }
-
-        const keywordRegex =
-          /(?:сумма|стоимость|к оплате|оплата|итог(?:овая)?|получить|чек на|цен(?:а|у)|платеж|платёж)\s*(?:составляет|будет|=|:)?\s*([\d\s]+(?:[.,]\d+)?)/i;
-        const keywordMatch = text.match(keywordRegex);
-        if (keywordMatch && typeof keywordMatch.index === "number") {
-          return {
-            amount: normalizeAmountValue(keywordMatch[1]),
-            range: [keywordMatch.index, keywordMatch.index + keywordMatch[0].length],
-          };
-        }
-
-        const numberMatches = [...text.matchAll(/\d+(?:[.,]\d+)?/g)].map((match) => ({
-          value: normalizeAmountValue(match[0]),
-          index: match.index ?? 0,
-          length: match[0].length,
-        }));
-
-        if (numberMatches.length >= 2) {
-          const addressQualifier = /(корп|корпус|кв|квартира|подъезд|пд|под\.|эт|этаж|стр|строение|литер|офис|оф\.|пом|склад|д\.|дом)/i;
-          const last = numberMatches[numberMatches.length - 1];
-          const beforeLast = numberMatches[numberMatches.length - 2];
-          const preceding = text.slice(Math.max(0, last.index - 16), last.index);
-          const following = text.slice(last.index + last.length, last.index + last.length + 16);
-          const lastNumber = parseFloat(last.value);
-          const beforeLastNumber = parseFloat(beforeLast.value);
-          if (
-            Number.isFinite(lastNumber) &&
-            Number.isFinite(beforeLastNumber) &&
-            !addressQualifier.test(preceding) &&
-            !addressQualifier.test(following) &&
-            lastNumber >= 100 &&
-            lastNumber >= beforeLastNumber
-          ) {
-            return {
-              amount: last.value,
-              range: [last.index, last.index + last.length],
-            };
-          }
-
-          const large = numberMatches.find((match) => match.value.length >= 4 || parseFloat(match.value) >= 500);
-          if (large && Number.isFinite(parseFloat(large.value))) {
-            return {
-              amount: large.value,
-              range: [large.index, large.index + large.length],
-            };
-          }
-        }
-
-        return null;
-      }
-
-      function removeRangeFromText(text, range) {
-        if (!range) return text;
-        const [start, end] = range;
-        return `${text.slice(0, start)} ${text.slice(end)}`;
-      }
-
-      function separateAddressAndAmount(raw) {
-        if (!raw) {
-          return { address: "", amount: "" };
-        }
-
-        let working = raw;
-        const info = findAmountInfo(working);
-        let amount = "";
-
-        if (info) {
-          amount = info.amount;
-          working = removeRangeFromText(working, info.range);
-        }
-
-        working = working.replace(
-          /(?:сумма|стоимость|к оплате|оплата|итог(?:овая)?|получить|чек на|цен(?:а|у)|платеж|платёж)\s*(?:составляет|будет|=|:)?\s*/gi,
-          " "
-        );
-        working = working.replace(/\s{2,}/g, " ");
-
-        return { address: tidyAddress(working), amount };
-      }
-
-      function extractAddressComponents(address) {
-        const result = createEmptyComponents();
-        if (!address) {
-          return result;
-        }
-
-        const segments = address
-          .split(/[,;]/)
-          .map((segment) => tidyAddress(segment))
-          .filter((segment) => segment.length > 0);
-
-        if (!segments.length) {
-          return result;
-        }
-
-        const used = new Set();
-        const streetKeywords =
-          /(ул\.?|улица|просп\.?|проспект|пер\.?|переулок|шоссе|ш\.?|площадь|пл\.?|наб\.?|набережная|бульвар|бул\.?|тракт|проезд|микрорайон|мкр\.?|аллея|дорога)/i;
-
-        let streetIndex = segments.findIndex((segment) => streetKeywords.test(segment));
-        if (streetIndex === -1) {
-          streetIndex = 0;
-        }
-
-        const streetSegment = segments[streetIndex];
-        used.add(streetIndex);
-
-        let street = streetSegment;
-        let houseNumber = "";
-        let houseLabel = "";
-
-        const explicitHouse = streetSegment.match(/(?:дом|д\.?|№|no\.?|house)\s*([0-9A-Za-zА-Яа-я/-]+)/i);
-        if (explicitHouse) {
-          houseNumber = explicitHouse[1].trim();
-          houseLabel = explicitHouse[0].trim();
-          const before = streetSegment.slice(0, explicitHouse.index).replace(/[,\.\s]+$/, "").trim();
-          street = before || street;
-        } else {
-          const trailingHouse = streetSegment.match(/(.+?)\s+(\d+[A-Za-zА-Яа-я/-]*)$/);
-          if (trailingHouse) {
-            street = trailingHouse[1].trim();
-            houseNumber = trailingHouse[2].trim();
-            houseLabel = trailingHouse[2].trim();
-          }
-        }
-
-        const assignComponent = (key, value, index) => {
-          if (!result[key]) {
-            result[key] = value.trim();
-            used.add(index);
-            return true;
-          }
-          return false;
-        };
-
-        for (let i = 0; i < segments.length; i += 1) {
-          if (used.has(i)) continue;
-          const segment = segments[i];
-
-          if (!houseNumber) {
-            const directHouse = segment.match(/^(?:д\.?|дом|№|no\.?|house)\s*([0-9A-Za-zА-Яа-я/-]+)/i);
-            if (directHouse) {
-              houseNumber = directHouse[1].trim();
-              houseLabel = segment.trim();
-              used.add(i);
-              continue;
-            }
-
-            if (/^\d+[A-Za-zА-Яа-я/-]*$/.test(segment)) {
-              houseNumber = segment.trim();
-              houseLabel = segment.trim();
-              used.add(i);
-              continue;
-            }
-          }
-
-          if (/^(?:корп(?:ус)?|к\.?|строение|стр\.?|литер)/i.test(segment)) {
-            assignComponent("building", segment, i);
-            continue;
-          }
-          if (/^(?:подъезд|под\.?|пд\.?)/i.test(segment)) {
-            assignComponent("entrance", segment, i);
-            continue;
-          }
-          if (/^(?:этаж|эт\.?)/i.test(segment)) {
-            assignComponent("floor", segment, i);
-            continue;
-          }
-          if (/^(?:кв\.?|квартира|ап\.?|оф\.?|офис)/i.test(segment)) {
-            assignComponent("apartment", segment, i);
-            continue;
-          }
-        }
-
-        result.street = street.trim();
-        result.houseNumber = houseNumber.trim();
-        result.houseLabel = houseLabel.trim() || houseNumber.trim();
-        result.other = segments.filter((_, index) => !used.has(index));
-
-        if (!result.street && segments.length) {
-          result.street = segments[0];
-        }
-
-        return result;
-      }
-
-      function composeAddressFromComponents(components) {
-        const parts = [];
-        if (components.street) {
-          parts.push(components.street);
-        }
-        if (components.houseNumber) {
-          parts.push(components.houseNumber);
-        }
-        if (components.building) {
-          parts.push(components.building);
-        }
-        if (components.entrance) {
-          parts.push(components.entrance);
-        }
-        if (components.floor) {
-          parts.push(components.floor);
-        }
-        if (components.apartment) {
-          parts.push(components.apartment);
-        }
-        if (components.other && components.other.length) {
-          parts.push(...components.other);
-        }
-        return parts.join(", ");
-      }
-
-      function parseOrderInput(rawAddress) {
-        const { address, amount } = separateAddressAndAmount(rawAddress);
-        const components = extractAddressComponents(address);
-        const composed = composeAddressFromComponents(components);
-        return {
-          address: composed || address,
-          amount,
-          components,
-        };
-      }
-
-      function updateParsedAddress(rawAddress, options = {}) {
-        const { setInput = false, preferExistingAmount = false, skipAmountUpdate = false } = options;
-        const parsed = parseOrderInput(rawAddress);
-        parsedAddressComponents = parsed.components;
-        parsedAddressString = parsed.address || tidyAddress(rawAddress);
-        if (setInput) {
-          addressInput.value = parsed.address;
-        }
-        if (!skipAmountUpdate && parsed.amount && (!preferExistingAmount || !amountInput.value.trim())) {
-          amountInput.value = formatAmount(parsed.amount);
-        }
-        return parsed;
-      }
-
-      function buildAdditionalDetails(components) {
-        const details = [];
-        if (components.building) details.push(components.building);
-        if (components.entrance) details.push(components.entrance);
-        if (components.floor) details.push(components.floor);
-        if (components.apartment) details.push(components.apartment);
-        if (components.other && components.other.length) {
-          details.push(components.other.join(", "));
-        }
-        return details.join(", ");
-      }
-
-      function loadState() {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if (!raw) return;
-          const state = JSON.parse(raw);
-          const hasStoredAmount = Boolean(state.amount && String(state.amount).trim());
-          if (state.address) {
-            addressInput.value = state.address;
-            updateParsedAddress(state.address, {
-              setInput: true,
-              preferExistingAmount: hasStoredAmount,
-              skipAmountUpdate: hasStoredAmount,
-            });
-          }
-          if (hasStoredAmount) amountInput.value = state.amount;
-          if (state.phone) phoneInput.value = state.phone;
-          if (state.notes) notesField.value = state.notes;
-        } catch (error) {
-          console.warn("Не удалось загрузить сохранённые данные", error);
-        }
-      }
-
-      function persistState() {
-        const state = {
-          address: addressInput.value.trim(),
-          amount: amountInput.value.trim(),
-          phone: phoneInput.value.trim(),
-          notes: notesField.value.trim(),
-        };
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        } catch (error) {
-          console.warn("Не удалось сохранить состояние", error);
-        }
-      }
-
-      function updateSummary() {
-        const rawAddress = addressInput.value.trim();
-        const phone = phoneInput.value.trim();
-        const amount = amountInput.value.trim();
-
-        const streetDisplay = parsedAddressComponents.street || parsedAddressString || rawAddress;
-        const houseDisplay = parsedAddressComponents.houseLabel || parsedAddressComponents.houseNumber;
-        const additionalDetails = buildAdditionalDetails(parsedAddressComponents);
-        const hasAddress = Boolean(rawAddress || parsedAddressString);
-
-        summaryList.innerHTML = `
-          <li>Улица: ${streetDisplay ? `<strong>${streetDisplay}</strong>` : '<span class="muted">не указана</span>'}</li>
-          <li>Дом: ${houseDisplay ? `<strong>${houseDisplay}</strong>` : hasAddress ? '<span class="muted">не распознан</span>' : '<span class="muted">не указан</span>'}</li>
-          <li>Дополнительно: ${additionalDetails ? `<strong>${additionalDetails}</strong>` : '<span class="muted">нет данных</span>'}</li>
-          <li>Телефон: ${phone ? `<strong>${phone}</strong>` : '<span class="muted">не указан</span>'}</li>
-          <li>Сумма: ${amount ? `<strong>${amount}</strong>` : '<span class="muted">не указана</span>'}</li>
-        `;
-
-        callButton.disabled = !normalizePhone(phone);
-        if (!rawAddress) {
-          routeButton.disabled = true;
-          navigatorButton.classList.add("disabled");
-          navigatorButton.setAttribute("aria-disabled", "true");
-          navigatorButton.setAttribute("tabindex", "-1");
-        } else {
-          navigatorButton.classList.remove("disabled");
-          navigatorButton.setAttribute("aria-disabled", "false");
-          navigatorButton.removeAttribute("tabindex");
-        }
-
-        if (!rawAddress) {
-          geocodeStatus.textContent = "";
-          currentGeocode = null;
-          routeButton.disabled = true;
-          navigatorButton.dataset.coords = "";
-        }
-      }
-
-      function formatAmount(value) {
-        const cleaned = value.replace(/[^\d,\.]/g, "").replace(/,/g, ".");
-        const number = parseFloat(cleaned);
-        if (Number.isFinite(number)) {
-          const hasDecimals = Math.abs(number % 1) > 0;
-          return new Intl.NumberFormat("ru-RU", {
-            style: "currency",
-            currency: "RUB",
-            minimumFractionDigits: hasDecimals ? 2 : 0,
-            maximumFractionDigits: hasDecimals ? 2 : 0,
-          }).format(number);
-        }
-        return value;
-      }
-
-      function normalizePhone(input) {
-        if (!input) return "";
-        const digits = input.replace(/\D/g, "");
-        if (digits.length < 10) return "";
-        let normalized = digits;
-        if (digits.length === 11 && digits.startsWith("8")) {
-          normalized = "7" + digits.slice(1);
-        }
-        if (normalized.length === 10) {
-          normalized = "7" + normalized;
-        }
-        if (normalized.length < 11) return "";
-        return `+${normalized}`;
-      }
-
-      function prettyPhone(phone) {
-        const normalized = normalizePhone(phone);
-        if (!normalized) return phone;
-        const digits = normalized.replace(/[^\d]/g, "");
-        const country = normalized.slice(0, 2);
-        const main = digits.slice(1);
-        if (main.length === 10) {
-          return `${country} ${main.slice(0, 3)} ${main.slice(3, 6)}-${main.slice(6, 8)}-${main.slice(8)}`;
-        }
-        return normalized;
-      }
-
-      function appendNote(text) {
-        const current = notesField.value.trim();
-        notesField.value = current ? `${current}\n${text}` : text;
-      }
-
-      function parseSpeech(transcript) {
-        const amountInfo = findAmountInfo(transcript);
-        if (amountInfo) {
-          amountInput.value = formatAmount(amountInfo.amount);
-        }
-
-        const phoneMatch = transcript.match(/(?:телефон|номер|контакт)\s*(?:клиента|получателя|)\s*(?:номер|)\s*([\+\d\s\-()]{7,})/i);
-        let phone = "";
-        if (phoneMatch) {
-          phone = phoneMatch[1];
-        } else {
-          const rawDigits = transcript.match(/\+?\d[\d\s\-()]{9,}/);
-          if (rawDigits) {
-            phone = rawDigits[0];
-          }
-        }
-        if (phone) {
-          const formatted = prettyPhone(phone);
-          if (normalizePhone(formatted)) {
-            phoneInput.value = formatted;
-          }
-        }
-
-        const addressMatch = transcript.match(
-          /(?:адрес(?: доставки)?|ехать(?: к| в)?|везти(?: в)?|доставка(?: в)?|куда ехать|куда везти|по адресу)\s*(?:[:\-]?\s*)([^\.]+?)(?:\s*(?:сумма|стоимость|оплата|итог|телефон|номер|контакт|руб(?:ля|лей)?|р\b|тенге|тг|сом|$))/i
-        );
-        if (addressMatch) {
-          const parsed = updateParsedAddress(addressMatch[1], {
-            setInput: true,
-            preferExistingAmount: Boolean(amountInfo),
-            skipAmountUpdate: Boolean(amountInfo),
-          });
-          if (!amountInfo && parsed.amount) {
-            amountInput.value = formatAmount(parsed.amount);
-          }
-        } else if (!addressInput.value.trim()) {
-          const streetMatch = transcript.match(/(?:ул\.?|улица|проспект|площадь|шоссе|пер\.?|дом|д\.?)\s*[^,.]+/i);
-          if (streetMatch) {
-            updateParsedAddress(streetMatch[0], {
-              setInput: true,
-              preferExistingAmount: Boolean(amountInfo),
-              skipAmountUpdate: Boolean(amountInfo),
-            });
-          }
-        } else {
-          updateParsedAddress(addressInput.value, {
-            setInput: false,
-            preferExistingAmount: true,
-            skipAmountUpdate: true,
-          });
-        }
-
-        persistState();
-        updateSummary();
-        scheduleGeocode();
-      }
-
-      function tidyAddress(raw) {
-        if (!raw) return "";
-        let result = raw.replace(/\s{2,}/g, " ").trim();
-        const leadingPatterns = [
-          /^(?:по\s+адресу|адрес(?:\s+доставки)?|адрес|куда ехать|куда везти|куда|ехать(?: в| к)?|везти(?: в)?|доставка(?: в)?|по направлению)\s+/i,
-          /^(?:нужно\s+ехать|нужно\s+везти|надо\s+ехать|надо\s+везти)\s+/i,
-        ];
-        let changed = true;
-        while (changed) {
-          changed = false;
-          for (const pattern of leadingPatterns) {
-            if (pattern.test(result)) {
-              result = result.replace(pattern, "").trim();
-              changed = true;
-            }
-          }
-        }
-        result = result.replace(/^(?:в|к)\s+/i, "");
-        result = result.replace(/[.,;]+$/, " ").replace(/\s{2,}/g, " ").trim();
-        return result;
-      }
-
-      function scheduleGeocode() {
-        const address = addressInput.value.trim();
-        if (!address) {
-          geocodeStatus.textContent = "";
-          currentGeocode = null;
-          routeButton.disabled = true;
-          navigatorButton.dataset.coords = "";
-          return;
-        }
-        geocodeStatus.textContent = "Ищем координаты по адресу…";
-        routeButton.disabled = true;
-        navigatorButton.dataset.coords = "";
-        if (geocodeTimer) {
-          clearTimeout(geocodeTimer);
-        }
-        if (abortController) {
-          abortController.abort();
-        }
-        geocodeTimer = setTimeout(async () => {
-          abortController = new AbortController();
-          try {
-            const response = await fetch(
-              `https://geocode.maps.co/search?q=${encodeURIComponent(address)}&accept-language=ru`,
-              { signal: abortController.signal }
-            );
-            if (!response.ok) {
-              throw new Error(`Ошибка сервера: ${response.status}`);
-            }
-            const data = await response.json();
-            if (Array.isArray(data) && data.length > 0) {
-              const best = data[0];
-              currentGeocode = {
-                lat: parseFloat(best.lat),
-                lon: parseFloat(best.lon),
-                label: best.display_name || address,
-              };
-              geocodeStatus.textContent = `Координаты найдены: ${currentGeocode.label}`;
-              routeButton.disabled = false;
-              navigatorButton.dataset.coords = `${currentGeocode.lat},${currentGeocode.lon}`;
-            } else {
-              currentGeocode = null;
-              geocodeStatus.textContent = "Не удалось найти координаты, попробуйте уточнить адрес.";
-            }
-          } catch (error) {
-            if (error.name === "AbortError") return;
-            currentGeocode = null;
-            geocodeStatus.textContent = "Не удалось связаться с сервисом геокодирования.";
-            console.warn("Geocode error", error);
-          }
-        }, 600);
-      }
-
-      function toggleListening() {
-        if (!recognition) return;
-        if (isListening) {
-          recognition.stop();
-          return;
-        }
-        try {
-          recognition.start();
-        } catch (error) {
-          console.warn("Speech recognition start error", error);
-        }
-      }
-
-      function setupRecognition() {
-        if (!SpeechRecognition) {
-          micButton.disabled = true;
-          micButton.classList.add("disabled");
-          const label = micButton.querySelector(".mic-label");
-          if (label) {
-            label.textContent = "Распознавание недоступно";
-          }
-          micStatus.textContent =
-            "Распознавание речи недоступно в этом браузере. Воспользуйтесь последней версией Chrome или Edge.";
-          return;
-        }
-        recognition = new SpeechRecognition();
-        recognition.lang = "ru-RU";
-        recognition.interimResults = true;
-        recognition.maxAlternatives = 1;
-
-        recognition.addEventListener("start", () => {
-          isListening = true;
-          micButton.classList.add("listening");
-          micButton.querySelector(".mic-label").textContent = "Слушаем… Нажмите, чтобы остановить";
-          micStatus.textContent = "Говорите. Чтобы закончить, снова нажмите на кнопку.";
-        });
-
-        recognition.addEventListener("end", () => {
-          isListening = false;
-          micButton.classList.remove("listening");
-          micButton.querySelector(".mic-label").textContent = "Начать диктовку";
-          micStatus.textContent =
-            "Диктовка остановлена. Нажмите на микрофон ещё раз, чтобы продолжить.";
-        });
-
-        recognition.addEventListener("error", (event) => {
-          console.warn("Speech recognition error", event.error);
-          micStatus.textContent = "Ошибка распознавания: " + event.error;
-          recognition.stop();
-        });
-
-        recognition.addEventListener("result", (event) => {
-          let interim = "";
-          let finalTranscript = "";
-          for (let i = event.resultIndex; i < event.results.length; i += 1) {
-            const result = event.results[i];
-            if (result.isFinal) {
-              finalTranscript += result[0].transcript.trim();
-            } else {
-              interim += result[0].transcript;
-            }
-          }
-          if (interim) {
-            micStatus.textContent = `Промежуточно: ${interim.trim()}`;
-          }
-          if (finalTranscript) {
-            const cleaned = finalTranscript.replace(/\s{2,}/g, " ").trim();
-            appendNote(cleaned);
-            parseSpeech(cleaned);
-            persistState();
-          }
-        });
-
-        micButton.addEventListener("click", toggleListening);
-      }
-
-      clearNotesButton.addEventListener("click", () => {
-        notesField.value = "";
-        persistState();
-      });
-
-      notesField.addEventListener("input", persistState);
-
-      addressInput.addEventListener("input", () => {
-        updateParsedAddress(addressInput.value, {
-          setInput: false,
-          preferExistingAmount: true,
-          skipAmountUpdate: true,
-        });
-        persistState();
-        updateSummary();
-        scheduleGeocode();
-      });
-
-      addressInput.addEventListener("change", () => {
-        updateParsedAddress(addressInput.value, {
-          setInput: true,
-          preferExistingAmount: true,
-        });
-        persistState();
-        updateSummary();
-        scheduleGeocode();
-      });
-
-      amountInput.addEventListener("change", () => {
-        if (amountInput.value.trim()) {
-          amountInput.value = formatAmount(amountInput.value);
-        }
-        persistState();
-        updateSummary();
-      });
-
-      amountInput.addEventListener("input", () => {
-        persistState();
-        updateSummary();
-      });
-
-      phoneInput.addEventListener("change", () => {
-        if (phoneInput.value.trim()) {
-          const formatted = prettyPhone(phoneInput.value);
-          if (normalizePhone(formatted)) {
-            phoneInput.value = formatted;
-          }
-        }
-        persistState();
-        updateSummary();
-      });
-
-      phoneInput.addEventListener("input", () => {
-        persistState();
-        updateSummary();
-      });
-
-      routeButton.addEventListener("click", () => {
-        const address = addressInput.value.trim();
-        if (!address) return;
-        if (currentGeocode) {
-          const url = `https://yandex.ru/maps/?rtext=~${currentGeocode.lat},${currentGeocode.lon}&rtt=auto`;
-          window.open(url, "_blank");
-        } else {
-          const fallback = `https://yandex.ru/maps/?text=${encodeURIComponent(address)}`;
-          window.open(fallback, "_blank");
-        }
-      });
-
-      callButton.addEventListener("click", () => {
-        const phone = normalizePhone(phoneInput.value.trim());
-        if (!phone) return;
-        window.location.href = `tel:${phone}`;
-      });
-
-      navigatorButton.addEventListener("click", (event) => {
-        event.preventDefault();
-        const address = addressInput.value.trim();
-        if (!address) return;
-        if (currentGeocode) {
-          const { lat, lon } = currentGeocode;
-          const schemeUrl = `yandexnavi://build_route?lat_to=${lat}&lon_to=${lon}`;
-          window.location.href = schemeUrl;
-          setTimeout(() => {
-            window.open(`https://yandex.ru/maps/?rtext=~${lat},${lon}&rtt=auto`, "_blank");
-          }, 1200);
-        } else {
-          window.open(`https://yandex.ru/maps/?text=${encodeURIComponent(address)}`, "_blank");
-        }
-      });
-
-      loadState();
-      updateParsedAddress(addressInput.value, {
-        setInput: true,
-        preferExistingAmount: true,
-        skipAmountUpdate: true,
-      });
-      updateSummary();
-      if (addressInput.value.trim()) {
-        scheduleGeocode();
-      }
-      setupRecognition();
-    })();
-  </script>
-</body>
+        <div class="modal-actions">
+          <button id="complete-cancel" class="secondary-button" type="button">Отмена</button>
+          <button id="complete-confirm" class="primary-button" type="button">Сохранить</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="./src/public/app.js" type="module"></script>
+  </body>
 </html>
