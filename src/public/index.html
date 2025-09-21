@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Courier Voice Assistant</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="title-block">
+          <div class="title">Courier Assist</div>
+          <div class="subtitle">Говорите. Мы запишем.</div>
+        </div>
+        <div class="status" id="record-status">Готов к записи</div>
+      </header>
+
+      <main class="app-content">
+        <section class="record-card">
+          <button id="record-button" class="record-button">
+            <span class="record-icon" aria-hidden="true">🎤</span>
+            <span class="record-label">Удерживайте для записи</span>
+          </button>
+          <div class="record-helper">Отпустите кнопку, чтобы отправить. Уведите палец в сторону, чтобы отменить.</div>
+        </section>
+
+        <section class="transcript-card">
+          <div class="section-title">Распознанный текст</div>
+          <div id="transcript" class="transcript" aria-live="polite">—</div>
+        </section>
+
+        <section class="form-card">
+          <div class="section-title">Данные доставки</div>
+          <label class="input-group">
+            <span>Адрес</span>
+            <input id="address" type="text" autocomplete="street-address" placeholder="Адрес доставки" />
+          </label>
+          <label class="input-group">
+            <span>Сумма, ₽</span>
+            <input id="amount" type="number" inputmode="decimal" placeholder="0" />
+          </label>
+          <label class="input-group">
+            <span>Телефон</span>
+            <input id="phone" type="tel" autocomplete="tel" placeholder="+7" />
+          </label>
+        </section>
+
+        <section class="actions-card">
+          <a id="call-button" class="action-button disabled" href="#" rel="noopener" aria-disabled="true">Позвонить</a>
+          <a id="route-button" class="action-button secondary disabled" href="#" rel="noopener" aria-disabled="true" target="_blank">Маршрут</a>
+        </section>
+
+        <section class="upload-card">
+          <div class="section-title">Чек</div>
+          <input id="receipt-input" type="file" accept="image/*" hidden />
+          <label class="upload-button" for="receipt-input">
+            <span class="upload-icon" aria-hidden="true">📷</span>
+            <span>Загрузить фото чека</span>
+          </label>
+          <div id="upload-hint" class="upload-hint">Фото будет обработано сразу после выбора.</div>
+        </section>
+
+        <section id="warnings" class="warnings" aria-live="assertive"></section>
+      </main>
+
+      <footer class="app-footer">
+        <span>Фиксируйте заказы без клавиатуры</span>
+      </footer>
+    </div>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
