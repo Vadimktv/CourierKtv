@@ -1,0 +1,22 @@
+{
+  "name": "courier-voice-assistant",
+  "version": "1.0.0",
+  "description": "Offline-friendly courier assistant with voice input and OCR",
+  "main": "src/server/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node src/server/index.js",
+    "start": "node src/server/index.js",
+    "test": "node tests/parser.smoke.test.js"
+  },
+  "keywords": [
+    "courier",
+    "voice",
+    "ocr"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
