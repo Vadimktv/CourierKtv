@@ -36,10 +36,10 @@ const completeClose = document.getElementById('complete-close');
 let mediaRecorder;
 let currentStream;
 let audioChunks = [];
-let cancelOnRelease = false;
-let pointerId = null;
-let cancelRequested = false;
 let isRecording = false;
+
+const DEFAULT_CITY = 'Геленджик';
+const CITY_PATTERN = /геленджик/i;
 
 const STORAGE_KEY = 'courier-orders-state-v1';
 const PAYMENT_LABELS = {
@@ -61,17 +61,10 @@ function updateStatus(message, variant = 'idle') {
 }
 
 function setRecordButtonState(state) {
-  recordButton.classList.remove('active', 'cancel');
-  switch (state) {
-    case 'recording':
-      recordButton.classList.add('active');
-      break;
-    case 'cancel':
-      recordButton.classList.add('cancel');
-      break;
-    default:
-      break;
-  }
+  const active = state === 'recording';
+  recordButton.classList.toggle('active', active);
+  recordButton.classList.remove('cancel');
+  recordButton.setAttribute('aria-pressed', active ? 'true' : 'false');
 }
 
 async function ensureStream() {
@@ -99,16 +92,11 @@ async function startRecording() {
       setRecordButtonState('idle');
       stopStream(stream);
       currentStream = null;
-      if (cancelRequested) {
-        updateStatus('Запись отменена', 'muted');
-        cancelRequested = false;
-        return;
-      }
-      updateStatus('Отправка аудио…', 'upload');
+      updateStatus('Обработка аудио…', 'upload');
       const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
       try {
         await sendAudio(blob);
-        updateStatus('Готово', 'success');
+        updateStatus('Данные обновлены', 'success');
       } catch (error) {
         console.error(error);
         updateStatus(error.message || 'Ошибка при отправке аудио', 'error');
@@ -123,13 +111,6 @@ async function startRecording() {
     updateStatus('Нет доступа к микрофону', 'error');
     isRecording = false;
     setRecordButtonState('idle');
-    try {
-      if (pointerId !== null) {
-        recordButton.releasePointerCapture(pointerId);
-      }
-    } catch (e) {
-      // ignore release errors
-    }
   }
 }
 
@@ -140,68 +121,22 @@ function stopStream(stream) {
   stream.getTracks().forEach((track) => track.stop());
 }
 
-function stopRecording(cancelled) {
+function stopRecording() {
   if (!mediaRecorder || mediaRecorder.state !== 'recording') {
     return;
   }
-  cancelRequested = cancelled;
   mediaRecorder.stop();
   isRecording = false;
   setRecordButtonState('idle');
-  if (cancelled) {
-    updateStatus('Отмена…', 'muted');
-  } else {
-    updateStatus('Обработка…', 'upload');
-  }
+  updateStatus('Завершение записи…', 'upload');
 }
 
-recordButton.addEventListener('pointerdown', async (event) => {
-  event.preventDefault();
-  pointerId = event.pointerId;
-  cancelOnRelease = false;
-  recordButton.setPointerCapture(pointerId);
+recordButton.addEventListener('click', async () => {
+  if (isRecording) {
+    stopRecording();
+    return;
+  }
   await startRecording();
-});
-
-recordButton.addEventListener('pointerup', (event) => {
-  if (event.pointerId !== pointerId) {
-    return;
-  }
-  recordButton.releasePointerCapture(pointerId);
-  pointerId = null;
-  stopRecording(cancelOnRelease);
-  cancelOnRelease = false;
-});
-
-recordButton.addEventListener('pointercancel', () => {
-  if (pointerId !== null) {
-    try {
-      recordButton.releasePointerCapture(pointerId);
-    } catch (error) {
-      // ignore
-    }
-  }
-  pointerId = null;
-  stopRecording(true);
-  cancelOnRelease = false;
-});
-
-recordButton.addEventListener('pointerleave', () => {
-  if (!isRecording) {
-    return;
-  }
-  cancelOnRelease = true;
-  setRecordButtonState('cancel');
-  updateStatus('Отпустите, чтобы отменить', 'warning');
-});
-
-recordButton.addEventListener('pointerenter', () => {
-  if (!isRecording) {
-    return;
-  }
-  cancelOnRelease = false;
-  setRecordButtonState('recording');
-  updateStatus('Идёт запись…', 'recording');
 });
 
 async function sendAudio(blob) {
@@ -242,7 +177,7 @@ function handleServerResult(result) {
   setTranscript(normalizedText);
 
   const parsed = parseRecognizedText(normalizedText);
-  addressInput.value = parsed.address;
+  addressInput.value = ensureAddressHasCity(parsed.address);
   amountInput.value = parsed.amount !== null ? String(parsed.amount) : '';
   phoneInput.value = parsed.phone ? formatPhone(parsed.phone) : '';
 
@@ -350,6 +285,17 @@ function cleanAddressText(value) {
     .replace(/^[,\.\s]+/g, '')
     .replace(/[\s,.;:-]+$/g, '')
     .trim();
+}
+
+function ensureAddressHasCity(value) {
+  const cleaned = cleanAddressText(value);
+  if (!cleaned) {
+    return '';
+  }
+  if (CITY_PATTERN.test(cleaned)) {
+    return cleaned;
+  }
+  return cleanAddressText(`${DEFAULT_CITY}, ${cleaned}`);
 }
 
 function buildParsingWarnings(parsed) {
@@ -544,7 +490,7 @@ function sanitizeOrder(order) {
   }
   const sanitized = {
     id: typeof order.id === 'string' ? order.id : generateId(),
-    address: typeof order.address === 'string' ? order.address : '',
+    address: typeof order.address === 'string' ? ensureAddressHasCity(order.address) : '',
     amount: typeof order.amount === 'number' && Number.isFinite(order.amount)
       ? Math.round(order.amount * 100) / 100
       : null,
@@ -652,6 +598,11 @@ function buildOrderWarnings(data, existingWarnings = []) {
 
 function saveCurrentOrder() {
   const data = collectFormData();
+  data.address = ensureAddressHasCity(data.address);
+  if (data.address !== addressInput.value.trim()) {
+    addressInput.value = data.address;
+    updateRouteAction();
+  }
   if (!data.address) {
     addressInput.focus();
     renderWarnings(['Укажите адрес доставки']);
@@ -702,7 +653,12 @@ function saveCurrentOrder() {
 }
 
 function loadOrderIntoForm(order) {
-  addressInput.value = order.address || '';
+  const normalizedAddress = ensureAddressHasCity(order.address || '');
+  addressInput.value = normalizedAddress;
+  if (order.address !== normalizedAddress) {
+    order.address = normalizedAddress;
+    persistState();
+  }
   amountInput.value = order.amount !== null ? String(order.amount) : '';
   phoneInput.value = order.phone ? formatPhone(order.phone) : '';
   notesInput.value = order.notes || '';
@@ -1345,7 +1301,7 @@ function updateCallAction() {
 }
 
 function updateRouteAction() {
-  const address = addressInput.value.trim();
+  const address = ensureAddressHasCity(addressInput.value);
   if (!address) {
     routeButton.href = '#';
     routeButton.dataset.fallback = '';
@@ -1399,6 +1355,14 @@ routeButton.addEventListener('click', (event) => {
   });
 });
 
+addressInput.addEventListener('blur', () => {
+  const withCity = ensureAddressHasCity(addressInput.value);
+  if (withCity !== addressInput.value) {
+    addressInput.value = withCity;
+  }
+  updateRouteAction();
+});
+
 phoneInput.addEventListener('blur', () => {
   const normalized = normalizePhone(phoneInput.value);
   phoneInput.value = normalized ? formatPhone(normalized) : phoneInput.value.trim();
@@ -1410,12 +1374,12 @@ receiptInput.addEventListener('change', async () => {
   if (!file) {
     return;
   }
-  updateStatus('Отправка фото…', 'upload');
-  uploadHint.textContent = `Обработка файла: ${file.name}`;
+  updateStatus('Обработка чека…', 'upload');
+  uploadHint.textContent = `Обрабатываем чек: ${file.name}`;
   try {
     await sendReceipt(file);
     updateStatus('Данные обновлены', 'success');
-    uploadHint.textContent = 'Готово! Можно загрузить другой чек.';
+    uploadHint.textContent = 'Готово! Детали доставки заполнены автоматически.';
   } catch (error) {
     console.error(error);
     updateStatus(error.message || 'Ошибка OCR', 'error');
@@ -1463,7 +1427,7 @@ function initialize() {
   updateCallAction();
   updateRouteAction();
   setTranscript('');
-  updateStatus('Готов к записи', 'idle');
+  updateStatus('Нажмите, чтобы начать запись', 'idle');
 }
 
 initialize();
