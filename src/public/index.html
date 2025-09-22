@@ -13,16 +13,16 @@
           <div class="title">Courier Assist</div>
           <div class="subtitle">Говорите. Мы запишем.</div>
         </div>
-        <div class="status" id="record-status">Готов к записи</div>
+        <div class="status" id="record-status">Нажмите, чтобы начать запись</div>
       </header>
 
       <main class="app-content">
         <section class="record-card">
-          <button id="record-button" class="record-button">
+          <button id="record-button" class="record-button" aria-pressed="false">
             <span class="record-icon" aria-hidden="true">🎤</span>
-            <span class="record-label">Удерживайте для записи</span>
+            <span class="record-label">Нажмите, чтобы начать запись</span>
           </button>
-          <div class="record-helper">Отпустите кнопку, чтобы отправить. Уведите палец в сторону, чтобы отменить.</div>
+          <div class="record-helper">Нажмите ещё раз, чтобы остановить запись.</div>
         </section>
 
         <section class="transcript-card">
@@ -40,7 +40,7 @@
               name="address"
               type="text"
               autocomplete="street-address"
-              placeholder="Адрес доставки"
+              placeholder="Адрес доставки в Геленджике"
             />
           </label>
           <label class="input-group">
@@ -90,7 +90,7 @@
             <span class="upload-icon" aria-hidden="true">📷</span>
             <span>Загрузить фото чека</span>
           </label>
-          <div id="upload-hint" class="upload-hint">Фото будет обработано сразу после выбора.</div>
+          <div id="upload-hint" class="upload-hint">После обработки чека адрес, сумма и телефон заполнятся автоматически.</div>
         </section>
 
         <section class="orders-card">
